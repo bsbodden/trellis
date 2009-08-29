@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <link rel="stylesheet" type="text/css" href="/style/hangman.css" />
+        <title>Game Over!</title>
+    </head>
+    <body>
+        <trellis:if test="!win">
+        <p>Bad luck. You failed to guess that the word was <trellis:value name="target"><b>education</b></trellis:value>.
+        </p><p>Better luck next time!</p>
+        </trellis:if>
+        
+        <trellis:if test="win">
+        <p>Congratulations! You guessed that the word was <trellis:value name="target"><b>education</b></trellis:value>
+	with <trellis:value name="guesses_left">2</trellis:value> remaining guesses.</p>
+        </trellis:if>
+	
+	<p>[<trellis:page_link tpage="start">Play Again</trellis:page_link>].</p>
+    </body>
+</html>
+

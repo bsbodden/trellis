@@ -1,0 +1,65 @@
+== Trellis examples:
+
+simplest
+========
+see http://tapestry.apache.org/tapestry5/tutorial1/first.html
+
+The simplest possible application to prove that Trellis is generating dynamic 
+HTML. The date and time in the middle of the page changes with every page 
+refresh proving that this is a live application.
+
+guest_book
+==========
+see http://wicket.apache.org/exampleguestbook.html
+
+This application show the basic form handling and page persistent fields.
+The GuestBook application allows users to enter a comments. On submission the 
+page gets re-rendered showing the list of comments entered so far. The list of 
+comments is kept in the session.
+
+hangman
+=======
+see http://rifers.org/examples#D.10
+
+Hangman is a simple word game in which the system selects a secret target word; 
+the player attempts to guess the word and is only allow 5 incorrect guesses. The 
+game is over when the word is guessed or the user has exhausted the maximum 
+number of incorrect guesses.
+
+hilo
+====
+see http://tapestry.apache.org/tapestry5/tutorial1/hilo.html
+
+In the game, the computer selects a number between 1 and 10. You try and guess 
+the number, clicking links. At the end, the computer tells you how many guesses 
+you required.
+
+simple_blog (work in progress)
+===========
+see http://code.whytheluckystiff.net/camping/browser/trunk/examples/blog.rb
+
+A database-backed simple blog. It provides Articles and Comments. Articles 
+belong to User and a Category. The edit actions/page behavior are protected.
+Uses datamapped in standalone mode (no integration with the framework has been
+created)
+
+stateful_counters
+=================
+see http://www.seaside.st/about/examples/multicounter
+see http://rifers.org/examples#D.9
+
+Example of a component (a simple counter) and how you can build and embed 
+multiple components in a page
+
+triki (work in progress)
+=====
+see http://mongrel.rubyforge.org/browser/trunk/examples/camping/tepee.rb
+
+A Trellis little Wiki, supporting versioning and Textile/Markdown
+
+
+
+
+
+
+

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+    <head>
+        <title>Trellis: Multi Counter</title>
+        <link rel="stylesheet" type="text/css" media="all" href="style/main.css"/>
+    </head>
+    <body>
+        <div id="wrap">		
+            <div id="desk" class="wide">				
+                <div id="body" class="columns">						
+                    <div id="content" class="triple">				
+                        <h1 class="heading">Multi Counter</h1>
+                        <p>The multicounter show multiple instances of a stateful component. It displays several instances of the same counter component.</p>
+                        <p>
+                            
+                        </p>
+                        <div class="paragraph">
+                            <div class="trellis">
+                                <trellis:remove>
+                                    <h1>1</h1>
+                                    <a href="add_link">++</a> <a href="subtract_link">--</a>
+                                    <hr/>
+                                    <h1>1</h1>
+                                    <a href="add_link">++</a> <a href="subtract_link">--</a>
+                                    <hr/>
+                                    <h1>1</h1>
+                                    <a href="add_link">++</a> <a href="subtract_link">--</a>
+                                    <hr/>
+                                    <h1>0</h1>
+                                    <a href="add_link">++</a> <a href="subtract_link">--</a>
+                                    <hr/>
+                                    <h1>0</h1>
+                                    <a href="add_link">++</a> <a href="subtract_link">--</a>
+                                </trellis:remove>
+                                <trellis:counter tid="one" />
+                                <hr/>
+                                <trellis:counter tid="two" />
+                                <hr/>
+                                <trellis:counter tid="three" />                               
+                            </div>
+                        </div>
+                        <trellis:action_link tid="reset">Reset all counters</trellis:action_link>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

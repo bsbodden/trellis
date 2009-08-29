@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:trellis="http://labs.integralis.org/schema/trellis_1_0_0.xsd">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <link rel="stylesheet" type="text/css" href="/style/hangman.css" />
+        <title>Trellis Hangman</title>
+    </head>
+    <body>
+        <p><trellis:value name="guesses_left">n</trellis:value> guesses remaining</p>	
+	<p>Word: <trellis:value name="letters">________</trellis:value></p>
+	
+	<div style="width: 250px;">
+            <trellis:loop source="a..z" value="guess"> 
+	            <div class="letter">
+                    <trellis:if test="!guessed['${guess}']">
+                        <trellis:action_link tid="link" context="guess">
+                            <trellis:img alt="${guess}" style="vertical-align:middle;border:0" src="/images/${guess}_disabled.png" />
+                        </trellis:action_link>                        
+                    </trellis:if>
+                    <trellis:if test="guessed['${guess}']">
+                        <trellis:img alt="${guess}" style="vertical-align:middle;border:0" src="/images/${guess}_enabled.png" />
+                    </trellis:if>
+                </div>
+            </trellis:loop>
+            <trellis:remove>
+                <!-- preview by designers -->
+                <div class="letter">
+                    <img alt="" style="vertical-align:middle;border:0" src="images/a_disabled.png" />
+                </div>
+                <div class="letter">
+                    <img alt="" style="vertical-align:middle;border:0" src="images/b_disabled.png" />
+                </div>
+                <div class="letter">
+                    <img alt="" style="vertical-align:middle;border:0" src="images/c_disabled.png" />
+                </div>
+                <div class="letter">
+                    <img alt="" style="vertical-align:middle;border:0" src="images/d_enabled.png" />
+                </div>
+                <div class="letter">
+                    <img alt="" style="vertical-align:middle;border:0" src="images/e_disabled.png" />
+                </div>                        
+                <!-- end of preview -->
+            </trellis:remove>
+        </div>
+    </body>
+</html>

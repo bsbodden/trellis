@@ -1,0 +1,27 @@
+body {
+    background-color: white;
+    color: #555555;
+    font-family: 'Lucida Sans', 'Helvetica', 'Sans-serif', 'sans';
+    font-size: 9pt;
+    line-height: 1.8em;
+    padding: 1em;
+    margin: 1em;
+}
+
+form {
+    padding: 0;
+    margin: 0;
+    display: inline;
+}
+
+.letter {
+    width: 30px;
+    height: 30px;
+    margin: 2px;
+    float: left;
+}
+
+a {
+    color: black;
+}
+
