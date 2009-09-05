@@ -7,7 +7,7 @@ module HiLo
   
   class HiLoGame < Application
     home :start
-    pages :guess, :game_over
+    #pages :guess, :game_over
   end
   
   class Start < Page

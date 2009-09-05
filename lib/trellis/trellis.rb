@@ -51,7 +51,6 @@ module Trellis
     # holding homepage, dependent pages, static resource routing paths
     def self.inherited(child) #:nodoc:
       child.meta_attr_reader(:homepage)
-      child.attr_array(:pages, :create_accessor => false)
       child.attr_array(:static_routes)
       child.meta_def(:logger) { Application.logger }
       super
@@ -61,13 +60,7 @@ module Trellis
     # the entry point is the URL pattern / where the application is mounted
     def self.home(sym)
       @homepage = sym   
-      @pages << sym
     end 
-
-    # class method that takes a list of page symbols
-    def self.pages(*syms)
-      @pages = @pages | syms
-    end
     
     # define url paths for static resources
     def self.map_static(urls = [], root = File.expand_path("#{File.dirname($0)}/../html/"))
@@ -128,7 +121,7 @@ module Trellis
           response.status = 200
         end
       else
-        # could find a page with default router, now what?
+        response.status = 404
       end
       response.finish
     end

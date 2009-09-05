@@ -68,12 +68,3 @@ describe Trellis::Application, " when sending an event to a page" do
     response.body.should == "<html><body><p>Goodbye Cruel World </p></body></html>"
   end
 end
-
-describe Trellis::Page, " when calling inject_dependent_pages on an instance of child class of Page" do
-  it "should contain instances of the injected pages" do
-    homepage = TestApp::Home.new
-    homepage.inject_dependent_pages
-    injected_page = homepage.instance_eval { @other }
-    injected_page.class.should == TestApp::Other
-  end
-end

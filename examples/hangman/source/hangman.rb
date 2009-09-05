@@ -6,7 +6,6 @@ include Trellis
 module Hangman
   class HangmanGame < Application
     home :start
-    pages :guess, :game_over
     
     map_static ['/images', '/style', '/favicon.ico']
   end

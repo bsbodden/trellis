@@ -36,7 +36,6 @@ module ObjectEditor
   
   class CrudComponentsExample < Application
     home :addresses
-    pages :address_edit_view
     
     map_static ['/images', '/style', '/favicon.ico']
   end

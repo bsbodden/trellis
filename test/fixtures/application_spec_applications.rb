@@ -1,7 +1,7 @@
 module TestApp
   class MyApp < Trellis::Application
     home :home
-    pages :other
+    #pages :other
     
     map_static ['/images', '/style', '/favicon.ico']
     map_static ['/yui'], "./js" 
