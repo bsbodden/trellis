@@ -74,4 +74,31 @@ describe Trellis::Application, " requesting a route" do
     response = @request.get('/report/2009/05/31')
     response.body.should == "<html><body><h2>Report for</h2>05/31/2009</body></html>"
   end
+
+  it "should support optional parameters" do
+    response_all_params = @request.get('/foobar/hello/world')
+    response_one_param = @request.get('/foobar/hello')
+    response_no_param = @request.get('/foobar')
+    response_all_params.body.should == "<html><body>hello-world</body></html>"
+    response_one_param.body.should == "<html><body>hello-</body></html>"
+    response_no_param.body.should == "<html><body>-</body></html>"
+  end
+
+  it "should support a wildcard parameters" do
+    response = @request.get('/splat/goodbye/cruel/world')
+    response.body.should == '<html><body>goodbye/cruel/world</body></html>'
+  end
+
+  it "should supports mixing multiple splat" do
+    response = @request.get('/splats/bar/foo/bling/baz/boom')
+    response.body.should == '<html><body>barblingbaz/boom</body></html>'
+
+    no_route_response = @request.get('/splats/bar/foo/baz')
+    no_route_response.status.should be(404)
+  end
+
+  it "should supports mixing named and wildcard params" do
+    response = @request.get('/mixed/afoo/bar/baz')
+    response.body.should == '<html><body>bar/baz-afoo</body></html>'
+  end
 end

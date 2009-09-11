@@ -38,5 +38,15 @@ describe Trellis::Router, " when constructed" do
     @router = Trellis::Router.new(:path => '/hello/:year/:month/:day')
     @router.keys.should include('year', 'month', 'day')
   end
+
+  it "with a path containing multiple optional parameters should collect all parameters" do
+    @router = Trellis::Router.new(:path => '/?:foo?/?:bar?')
+    @router.keys.should include('foo', 'bar')
+  end
+
+  it "with a path containing a single wildcard param it should capture the values in splat" do
+    @router = Trellis::Router.new(:path => '/*')
+    @router.keys.should include('splat')
+  end
     
 end

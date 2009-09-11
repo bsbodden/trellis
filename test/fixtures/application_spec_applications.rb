@@ -84,4 +84,56 @@ module TestApp
     end
   end
 
+  class RoutedWithOptionalParams < Trellis::Page
+    route '/foobar/?:foo?/?:bar?'
+
+    template do
+      html {
+        body {
+          text %[<trellis:value name="foo"/>]
+          text '-'
+          text %[<trellis:value name="bar"/>]
+        }
+      }
+    end
+  end
+
+  class RoutedWithSingleWildcard < Trellis::Page
+    route '/splat/*'
+
+    template do
+      html {
+        body {
+          text %[<trellis:value name="splat"/>]
+        }
+      }
+    end
+  end
+
+  class RoutedWithMultipleWildcards < Trellis::Page
+    route '/splats/*/foo/*/*'
+
+    template do
+      html {
+        body {
+          text %[<trellis:value name="splat"/>]
+        }
+      }
+    end
+  end
+
+  class RoutedWithMixedParams < Trellis::Page
+    route '/mixed/:foo/*'
+
+    template do
+      html {
+        body {
+          text %[<trellis:value name="splat"/>]
+          text '-'
+          text %[<trellis:value name="foo"/>]
+        }
+      }
+    end
+  end
+
 end
