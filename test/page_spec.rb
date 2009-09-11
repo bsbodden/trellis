@@ -9,7 +9,7 @@ describe Trellis::Page, " when sending an event to a page" do
     @request = Rack::MockRequest.new(@application) 
   end
   
-  it "if the event handler returns self it should render the receiving page" do
+  it "should render the receiving page if the event handler returns self" do
     response = @request.get("/home.event1")
     response.body.should == "<html><body><h1>Hello World!</h1></body></html>"
   end
@@ -35,12 +35,20 @@ describe Trellis::Page, " when sending an event to a page" do
   end
 end
 
-describe Trellis::Page, " when calling inject_dependent_pages on an instance of child class of Page" do
+describe Trellis::Page, " when calling inject_dependent_pages on an instance of Page" do
   it "should contain instances of the injected pages" do
     homepage = TestApp::Home.new
     homepage.inject_dependent_pages
     injected_page = homepage.instance_eval { @other }
     injected_page.should be_an_instance_of(TestApp::Other)
+  end
+end
+
+describe Trellis::Page, " when created with a custom route" do
+  it "should contain an instance of Router" do
+    router = TestApp::RoutedDifferently.router
+    router.should_not be_nil
+    router.should be_an_instance_of(Trellis::Router)
   end
 end
 

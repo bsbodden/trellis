@@ -46,6 +46,7 @@ module Trellis
   # pages and it must define a home page or entry point into the application  
   class Application
     include Logging
+    include Rack::Utils
     
     # descendant application classes get a singleton class level instances for 
     # holding homepage, dependent pages, static resource routing paths
@@ -79,6 +80,7 @@ module Trellis
     end
     
     def configured_instance
+      # configure rack middleware
       application = Rack::ShowStatus.new(self)
       application = Rack::ShowExceptions.new(application)
       application = Rack::CommonLogger.new(application, Application.logger)
@@ -90,16 +92,24 @@ module Trellis
       end
       application
     end
+
+    # find the first page with a suitable router, if none is found use the default router
+    def find_router_for(request)
+      match = Page.subclasses.values.detect { |page| page.router && page.router.matches?(request) }
+      match ? match.router : DefaultRouter.new(:application => self)
+    end
     
     # implements the rack specification
     def call(env)
       response = Rack::Response.new
       request = Rack::Request.new(env)
+
+      Application.logger.debug "request received with url_root of #{request.script_name}"
+
       session = env["rack.session"]  
       
-      route = DefaultRouter.new(self).route(request)
-      
-      Application.logger.debug "request received with url_root of #{request.script_name}"
+      router = find_router_for(request)
+      route = router.route(request)
       
       page = route.destination.new if route.destination
       if page
@@ -108,7 +118,8 @@ module Trellis
         page.call_if_provided(:before_load)
         page.load_page_session_information(session)
         page.call_if_provided(:after_load)
-        page.params = request.params.keys_to_symbols
+        page.params = request.params.keys_to_symbols #TODO I might turn this into page instance variables
+        router.inject_parameters_into_page_instance(page, request)
         page = page.process_event(route.event, route.value, route.source, session) if route.event
 
         # prepare the http response
@@ -133,7 +144,7 @@ module Trellis
   class Route
     attr_reader :destination, :event, :source, :value
 
-    def initialize(destination, event, source, value)    
+    def initialize(destination, event = nil, source = nil, value = nil)
       @destination, @event, @source, @value = destination, event, source, value
     end
   end
@@ -142,14 +153,83 @@ module Trellis
   # A Router returns a Route in response to an HTTP request
   class Router
     attr_reader :application
+    attr_reader :pattern
+    attr_reader :keys
+    attr_reader :path
+    attr_reader :page
     
-    def initialize(application)
-      @application = application
+    def initialize(options={})
+      @application = options[:application]
+      @path = options[:path]
+      @page = options[:page]
+      compile_path if @path
+    end
+
+    def route(request = nil)
+      Route.new(@page) if @page 
+    end
+
+    def matches?(request)
+      request.path_info.match(@pattern) != nil
+    end
+
+    def inject_parameters_into_page_instance(page, request)
+      # extract parameters and named parameters from request
+      if @pattern && @page && match = @pattern.match(request.path_info)
+        values = match.captures.to_a
+        params =
+          if @keys.any?
+            @keys.zip(values).inject({}) do |hash,(k,v)|
+              if k == 'splat'
+                (hash[k] ||= []) << v
+              else
+                hash[k] = v
+              end
+              hash
+            end
+          elsif values.any?
+            {'captures' => values}
+          else
+            {}
+          end
+        params.each_pair { |name, value| page.instance_variable_set("@#{name}".to_sym, value) }
+      end
+    end
+
+    private
+
+    # borrowed (stolen) from Sinatra!
+    def compile_path
+      @keys = []
+      if @path.respond_to? :to_str
+        special_chars = %w{. + ( )}
+        pattern =
+          @path.to_str.gsub(/((:\w+)|[\*#{special_chars.join}])/) do |match|
+            case match
+            when "*"
+              @keys << 'splat'
+              "(.*?)"
+            when *special_chars
+              Regexp.escape(match)
+            else
+              @keys << $2[1..-1]
+              "([^/?&#]+)"
+            end
+          end
+        @pattern = /^#{pattern}$/
+      elsif @path.respond_to?(:keys) && @path.respond_to?(:match)
+        @pattern = @path
+        @keys = @path.keys
+      elsif @path.respond_to? :match
+        @pattern = path
+      else
+        raise TypeError, @path
+      end
     end
   end
   
   # -- DefaultRouter --
-  # The default routing scheme is in the form /page[.event_[source]][/value][?query_params]
+  # The default routing scheme is in the form /page[.event[_source]][/value][?query_params]
   class DefaultRouter < Router
     ROUTE_REGEX = %r{^(?:/)([^.]+)(?:.([^_/]+)(?:_([^/]+))?)?(?:/([\w]+)$)?}
     
@@ -159,6 +239,10 @@ module Trellis
       page = Page.get_page(destination.to_sym)
       
       Route.new(page, event, source, value)      
+    end
+
+    def matches?(request)
+      request.path_info.match(ROUTE_REGEX) != nil
     end
   end
   
@@ -184,6 +268,7 @@ module Trellis
       child.attr_array(:persistents)
       child.meta_attr_accessor :url_root
       child.meta_attr_accessor :name
+      child.meta_attr_accessor :router
       child.meta_attr_accessor :layout
       child.meta_def(:add_stateful_component) { |tid,clazz| @stateful_components << [tid,clazz] }
  
@@ -225,6 +310,11 @@ module Trellis
     def self.pages(*syms)
       @pages = @pages | syms
     end
+
+    def self.route(path)
+      router = Router.new(:path => path, :page => self)
+      self.instance_variable_set(:@router, router)
+    end
     
     def self.persistent(*fields)
       meta_attr_reader fields
@@ -233,6 +323,10 @@ module Trellis
     
     def self.get_page(sym)
       @@subclasses[sym]
+    end
+
+    def self.subclasses
+      @@subclasses
     end
     
     def initialize # TODO this is Ugly.... should no do it in initialize since it'll require super in child classes
@@ -432,6 +526,9 @@ module Trellis
           @context.globals.send(sym, value)
         end
       end
+
+      #TODO add public page methods to the context
+
       
       # add the page to the context too
       @context.globals.page = page

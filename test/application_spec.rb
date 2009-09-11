@@ -3,7 +3,7 @@ require File.dirname(__FILE__) + '/spec_helper.rb'
 require "rack" 
 require_fixtures 'application_spec_applications'
 
-describe Trellis::Application, " a Trellis application when declared" do
+describe Trellis::Application, " when declared" do
   before do
     @homepage = TestApp::MyApp.instance_eval { @homepage }
     @pages = TestApp::MyApp.instance_eval { @pages }
@@ -14,19 +14,19 @@ describe Trellis::Application, " a Trellis application when declared" do
     @homepage.should == :home
   end
   
-  it "should contain the home page in its collection of pages" do
-    @pages.include?(:home).should be(true)
-  end
-  
   it "should contain any declared static routes" do
     images_route = @static_routes.select { |item| item[:urls].include?('/images') }
-    images_route.should_not be_empty    
+    images_route.should_not be_empty  
     style_route = @static_routes.select { |item| item[:urls].include?('/style') }
     style_route.should_not be_empty  
     favicon_route = @static_routes.select { |item| item[:urls].include?('/favicon.ico') }
     favicon_route.should_not be_empty
-    yui_route = @static_routes.select { |item| item[:urls].include?('/yui') && item[:root].include?('./js') }
-    yui_route.should_not be_empty    
+    jquery_route = @static_routes.select { |item| item[:urls].include?('/jquery') && item[:root].include?('./js') }
+    jquery_route.should_not be_empty
+  end
+
+  it "should include Rack::Utils" do
+    TestApp::MyApp.included_modules.should include(Rack::Utils)
   end
  
 end
@@ -47,24 +47,31 @@ describe Trellis::Application, " when requesting the root url with a GET" do
   end
 end
 
-describe Trellis::Application, " when sending an event to a page" do
+describe Trellis::Application, " requesting a route" do
   before(:each) do
     application = TestApp::MyApp.new
-    @request = Rack::MockRequest.new(application) 
+    @request = Rack::MockRequest.new(application)
   end
-  
-  it "if the event handler returns self it should render the receiving page" do
-    response = @request.get("/home.event1")
-    response.body.should == "<html><body><h1>Hello World!</h1></body></html>"
+
+  it "should return a 404 (not found)" do
+    response = @request.get("/blowup")
+    response.status.should be(404)
   end
-  
-  it "should return a response as a string if the event handler returns a String" do
-    response = @request.get("/home.event2")
-    response.body.should == "just some text"
-  end  
-  
-  it "should render the injected page as a response if the event handler returns an injected page " do
-    response = @request.get("/home.event3")
-    response.body.should == "<html><body><p>Goodbye Cruel World </p></body></html>"
+
+  it "should return the page contents of the first page matching the route" do
+    response = @request.get("/whoa")
+    response.body.should == "<html><body>whoa!</body></html>"
+  end
+
+  it "should support a single named parameter" do
+    response_brian = @request.get("/hello/brian")
+    response_anne = @request.get("/hello/anne")
+    response_brian.body.should == "<html><body><h2>Hello</h2>brian</body></html>"
+    response_anne.body.should == '<html><body><h2>Hello</h2>anne</body></html>'
+  end
+
+  it "should support multiple named parameters" do
+    response = @request.get('/report/2009/05/31')
+    response.body.should == "<html><body><h2>Report for</h2>05/31/2009</body></html>"
   end
 end

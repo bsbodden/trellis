@@ -126,6 +126,13 @@ module Trellis
         value
       end
     end
+
+    class Eval < Trellis::Component
+      render do |tag|
+        expression = tag.attr['expression']
+        tag.locals.instance_eval(expression) if expression
+      end
+    end
       
     #
     #

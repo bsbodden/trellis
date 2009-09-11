@@ -1,10 +1,9 @@
 module TestApp
   class MyApp < Trellis::Application
     home :home
-    #pages :other
     
     map_static ['/images', '/style', '/favicon.ico']
-    map_static ['/yui'], "./js" 
+    map_static ['/jquery'], "./js"
   end
 
   class Home < Trellis::Page 
@@ -47,5 +46,42 @@ module TestApp
     end
     
     template do html { body { text %[<trellis:value name="some_value"/>] }} end
-  end  
+  end
+
+  class RoutedDifferently < Trellis::Page
+    route '/whoa'
+
+    template do html { body { text %[whoa!] }} end
+  end
+  
+  class RoutedDifferentlyWithAParam < Trellis::Page
+    route '/hello/:name'
+
+    template do 
+      html { 
+        body { 
+          h2 "Hello"
+          text %[<trellis:value name="name"/>] 
+        }
+      } 
+    end
+  end
+
+  class RoutedDifferentlyWithParams < Trellis::Page
+    route '/report/:year/:month/:day'
+
+    template do
+      html {
+        body {
+          h2 "Report for"
+          text %[<trellis:value name="month"/>]
+          text '/'
+          text %[<trellis:value name="day"/>]
+          text '/'
+          text %[<trellis:value name="year"/>]
+        }
+      }
+    end
+  end
+
 end
