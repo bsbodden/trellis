@@ -7,6 +7,7 @@ module Routing
 
   class Routing < Application
     home :home
+    logger.level = DEBUG
   end
 
   class Home < Trellis::Page
@@ -26,6 +27,10 @@ module Routing
       Date.parse("#{@month}/#{@day}/#{@year}")
     end
 
+    def on_select
+      self
+    end
+
     template do
       html {
         body {
@@ -33,6 +38,8 @@ module Routing
             text %[Date <trellis:value name="page.parse_date"/>]
           }
           text %[is the <trellis:eval expression="Date.parse(month + '/' + day + '/' + year).yday.to_s"/> day of the year]
+          br
+          text %[<trellis:action_link>Refresh</trellis:action_link>]
         }
       }
     end

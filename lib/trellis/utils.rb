@@ -57,19 +57,25 @@ class Class #:nodoc:
       downcase.split('/').last
   end
   
-  def meta_attr_accessor(*syms)
+  def class_attr_accessor(*syms)
     syms.flatten.each do |sym|
       metaclass.instance_eval { attr_accessor(sym) }
     end
   end
+
+  def instance_attr_accessor(*syms)
+    syms.flatten.each do |sym|
+      instance_eval { attr_accessor(sym) }
+    end
+  end
   
-  def meta_attr_reader(*syms)
+  def class_attr_reader(*syms)
     syms.flatten.each do |sym|
       metaclass.instance_eval { attr_reader(sym) }
     end
   end
   
-  def meta_attr_writer(*syms)
+  def class_attr_writer(*syms)
     syms.flatten.each do |sym|
       metaclass.instance_eval { attr_writer(sym) }
     end

@@ -9,19 +9,21 @@ describe Trellis::Page, " when sending an event to a page" do
     @request = Rack::MockRequest.new(@application) 
   end
   
-  it "should render the receiving page if the event handler returns self" do
-    response = @request.get("/home.event1")
-    response.body.should == "<html><body><h1>Hello World!</h1></body></html>"
+  it "should redirect to the receiving page if the event handler returns self" do
+    response = @request.get("/home/events/event1")
+    response.status.should be(302)
+    response.headers['Location'].should == '/home'
   end
   
   it "should return a response as a string if the event handler returns a String" do
-    response = @request.get("/home.event2")
+    response = @request.get("/home/events/event2")
     response.body.should == "just some text"
   end  
   
-  it "should render the injected page as a response if the event handler returns an injected page " do
-    response = @request.get("/home.event3")
-    response.body.should == "<html><body><p>Goodbye Cruel World </p></body></html>"
+  it "should redirect to the injected page as a response if the event handler returns an injected page " do
+    response = @request.get("/home/events/event3")
+    response.status.should be(302)
+    response.headers['Location'].should == '/other'
   end
   
   it "should invoke the before_load method if provided by the page" do

@@ -62,7 +62,7 @@ module Hangman
   end
   
   class GameOver < Page
-    attr_accessor :target, :win, :guesses_left
+    persistent :target, :win, :guesses_left
   end
   
   web_app = HangmanGame.new

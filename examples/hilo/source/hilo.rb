@@ -7,15 +7,14 @@ module HiLo
   
   class HiLoGame < Application
     home :start
-    #pages :guess, :game_over
+    logger.level = DEBUG
   end
   
   class Start < Page
     pages :guess
     
     def on_select
-      @guess.target = rand(10);
-      return @guess
+      @guess.initialize_target
     end
   end
   
@@ -37,13 +36,14 @@ module HiLo
       next_page
     end
     
-    def target=(value)
-      @target, @count, @message = value, 0, ''
+    def initialize_target
+      @target, @count, @message = rand(9) + 1, 0, ''
+      self
     end
   end
   
   class GameOver < Page
-    attr_accessor :count
+    persistent :count
   end
 
   web_app = HiLoGame.new

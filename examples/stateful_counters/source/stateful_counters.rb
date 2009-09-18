@@ -5,7 +5,7 @@ include Trellis
 
 # http://seaside.st/about/examples/multicounter
 # This example shows 
-# - a custom stateful component that can be use repeatedly in a page.
+# - a custom stateful component that can be use repeatedly in a page
 module StatefulCounters
 
   class Counter < Component
@@ -24,13 +24,18 @@ module StatefulCounters
       page = tag.globals.page
       counter = page.send("counter_#{tid}")
       value = counter.value
-      
+      href_add = DefaultRouter.to_uri(:page => page.class.name,
+                                      :event => 'add',
+                                      :source => "counter_#{tid}")
+      href_subtract = DefaultRouter.to_uri(:page => page.class.name,
+                                      :event => 'subtract',
+                                      :source => "counter_#{tid}")
       builder = Builder::XmlMarkup.new
       builder.div(:id => tid) {
         builder.h1(value)
-        builder.a("++", :href => "/#{page.class.name}.add_counter#{tid}")
+        builder.a("++", :href => href_add)
         builder.text(" ")      
-        builder.a("--", :href => "/#{page.class.name}.subtract_counter#{tid}")   
+        builder.a("--", :href => href_subtract)
       }
     end
     

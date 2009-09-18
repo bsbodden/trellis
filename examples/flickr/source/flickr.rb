@@ -73,10 +73,6 @@ module Flickr
           p {
             text "<trellis:flickr_interestingness/>"
           }
-          # h2 "and some more.."
-          # p { 
-          #   text "<trellis:flickr_interestingness per_page='2'/>"   
-          # }
         }
       }
     end

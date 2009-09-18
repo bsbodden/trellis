@@ -37,29 +37,38 @@ module Trellis
       render do |tag|
         source = tag.attr['tid'] 
         context = tag.attr['context']
-        target_page = tag.attr['page'] || tag.globals.page.class.name
-        url_root = tag.globals.page.class.url_root
-        
+        path = (tag.globals.page.path.nil? || tag.globals.page.path.empty?) ? nil : tag.globals.page.path
+        class_name = tag.globals.page.class.name
+        target_page = tag.attr['page'] || path || class_name
+
         if context
           value = tag.locals.instance_eval(context) || tag.globals.instance_eval(context)
         end
-        
+
         if source
           if context
-            id = "#{source}_#{value}"          
-            href = "#{url_root}/#{target_page}.select_#{source}/#{value}"            
+            id = "#{source}_#{value}"
+            href = DefaultRouter.to_uri(:page => target_page,
+                                                 :event => 'select',
+                                                 :source => source,
+                                                 :value => value)
           else
             id = "#{source}"
-            href = "#{url_root}/#{target_page}.select_#{source}"             
+            href = DefaultRouter.to_uri(:page => target_page,
+                                                 :event => 'select',
+                                                 :source => source)
           end
         else
           if context
-            id = "action_link_#{value}"          
-            href = "#{url_root}/#{target_page}.select/#{value}"            
+            id = "action_link_#{value}"
+            href = DefaultRouter.to_uri(:page => target_page,
+                                                 :event => 'select',
+                                                 :value => value)
           else
             id = "action_link"
-            href = "#{url_root}/#{target_page}.select"             
-          end          
+            href = DefaultRouter.to_uri(:page => target_page,
+                                                 :event => 'select')
+          end
         end
         
         builder = Builder::XmlMarkup.new
@@ -119,10 +128,8 @@ module Trellis
         unless name.include?('.')
           value = tag.locals.send(name.to_sym) || tag.globals.send(name.to_sym)
         else
-          target_name, method = name.split('.')
-          target = tag.locals.send(target_name.to_sym) || tag.globals.send(target_name.to_sym)
-          value = target.send(method.to_sym) if target
-        end 
+          value = tag.locals.instance_eval(name) || tag.globals.instance_eval(name)
+        end
         value
       end
     end
@@ -130,19 +137,19 @@ module Trellis
     class Eval < Trellis::Component
       render do |tag|
         expression = tag.attr['expression']
-        tag.locals.instance_eval(expression) if expression
+        tag.locals.instance_eval(expression) || tag.globals.instance_eval(expression) if expression
       end
     end
       
     #
-    #
+    # page link should take parameters for pages that have a custom route
     #
     class PageLink < Trellis::Component
       render do |tag|
         url_root = tag.globals.page.class.url_root
         page_name = tag.attr['tpage']
         id = tag.attr['tid'] || page_name
-        href = "#{url_root}/#{page_name}"
+        href = DefaultRouter.to_uri(:url_root => url_root, :page => page_name)
         contents = tag.expand
         builder = Builder::XmlMarkup.new
         builder.a(contents, "href" => href, "id" => "page_link_#{id}")
@@ -179,27 +186,11 @@ module Trellis
     #
     class If < Trellis::Component
       render do |tag|
-        # resolve the ${} variables  
-        test = Utils.expand_properties_in_tag(tag.attr['test'], tag)  
-
-        # TODO I'm suspecting this is buggy! plus should we catch exceptions?
-        local = tag.locals.instance_eval(test)
-        global = tag.globals.instance_eval(test)        
-        
-        result = false
-        if local
-          result = local
-        elsif global
-          result = global
-        end
-   
-        content = ''
-        if result 
-          content << tag.expand
-        else 
-          # find the else tag and expand it
-        end
-        content
+        # resolve the ${} variables
+        test = Utils.expand_properties_in_tag(tag.attr['test'], tag)
+        value = tag.locals.instance_eval(test) || tag.globals.instance_eval(test)
+        result = !value ? false : value
+        tag.expand if result
       end
     end
     
@@ -209,25 +200,10 @@ module Trellis
     class Unless < Trellis::Component
       render do |tag|
         # resolve the ${} variables  
-        test = Utils.expand_properties_in_tag(tag.attr['test'], tag)  
-
-        local = tag.locals.instance_eval(test)
-        global = tag.globals.instance_eval(test)        
-        
-        result = false
-        if local
-          result = !local
-        elsif global
-          result = !global
-        end
-   
-        content = ''
-        if result 
-          content << tag.expand
-        else 
-          # find the else tag and expand it
-        end
-        content
+        test = Utils.expand_properties_in_tag(tag.attr['test'], tag)
+        value = tag.locals.instance_eval(test) || tag.globals.instance_eval(test)
+        result = !value ? false : value
+        tag.expand unless result
       end
     end
     
@@ -253,8 +229,12 @@ module Trellis
         form_name = tag.attr['tid']
         on_behalf = tag.attr['on_behalf']
         method = tag.attr['method'] || 'GET'
-        tag.locals.form_name = form_name        
-        href = "#{url_root}/#{tag.globals.page.class.name}.submit_#{(on_behalf ? on_behalf : form_name)}"        
+        tag.locals.form_name = form_name
+        target_page = tag.globals.page.class.name
+        href = Trellis::DefaultRouter.to_uri(:url_root => url_root,
+                                             :page => target_page,
+                                             :event => "submit",
+                                             :source => "#{(on_behalf ? on_behalf : form_name)}")
         builder = Builder::XmlMarkup.new
         builder.form("name" => form_name, "action" => href, "method" => method) do |form|
           form << tag.expand
@@ -387,10 +367,10 @@ module Trellis
           if !literal
             resolved_value = ''
             unless value.include?('.')
-              resolved_value = tag.locals.send(value.to_sym) || tag.globals.send(value.to_sym)
+              resolved_value = tag.globals.send(value.to_sym)
             else
               target_name, method = value.split('.')
-              target = tag.locals.send(target_name.to_sym) || tag.globals.send(target_name.to_sym)
+              target = tag.globals.send(target_name.to_sym)
               resolved_value = target.send(method.to_sym)
             end 
             attrs['value'] = resolved_value
@@ -523,343 +503,6 @@ module Trellis
     end
       
     # TODO: Need radio button group and a standalone radio button
-    
-
-    #
-    #
-    #
-    class Grid < Trellis::Component
-      is_stateful
-      
-      tag_name "grid"
-      
-      attr_accessor :source
-      field :page_position, :persistent => true
-      attr_reader :properties
-      attr_reader :commands
-      attr_reader :counter_method
-      attr_reader :counter_method_arguments
-      attr_reader :retrieve_block
-      attr_reader :sort_properties
-      field :sorted_by, :persistent => true
-      field :sort_direction, :persistent => true, :default_value => :ascending
-      
-      def initialize
-        @properties = []
-        @sort_properties = []
-        @commands = []
-      end
-      
-      # must be called before rendering
-      def columns(*syms)
-        syms.each do |sym|
-          @properties << sym
-        end
-      end
-      
-      def add_command(options=[])
-        # extract options
-        name = options[:name] if options
-        page = options[:page] if options
-        context = options[:context] if options
-        image = options[:image] if options
-
-        @commands << lambda do |tag, object| 
-          tid = tag.attr['tid']
-          value = object.send(context.to_sym)
-          url_root = tag.globals.page.class.url_root
-          page = tag.globals.page.class.name unless page
-          
-          href = "#{url_root}/#{page}.#{name}_#{tid}/#{value}"            
-        
-          %{
-          <a href="#{href}">
-            <img src='#{image}'/>
-          </a>
-          }
-        end
-      end
-      
-      def sort_by_all_except(*syms)
-        @sort_properties = @properties.reject { |property| syms.includes?(property)}
-      end
-      
-      def sort_by(*syms)
-        unless syms.first == :all
-          @sort_properties = syms
-        else
-          @sort_properties = @properties
-        end
-      end
-      
-      def size_accessor(symbol, args)
-        @counter_method, @counter_method_arguments = symbol, args        
-      end
-      
-      def retrieve_method(&block)
-        @retrieve_block = block
-      end
-      
-      # event handlers
-      
-      def on_page(page)
-        @page_position = page.to_i # must use the cohersion built in capabilities
-      end
-      
-      def on_sort(property)
-        to_sym = property.to_sym
-        if @sort_properties.include?(to_sym)
-          if @sorted_by != to_sym
-            @sorted_by = to_sym
-          else  
-            @sort_direction = @sort_direction == :ascending ? :descending : :ascending
-          end          
-        end
-      end
-      
-      render do |tag|
-        url_root = tag.globals.page.class.url_root
-        # get the page object
-        page = tag.globals.page
-        # get the tag properties
-        tid = tag.attr['tid']
-        rows_per_page = tag.attr['rows_per_page'] || 3
-        # get the instance of the component from the page
-        grid = page.send("grid_#{tid}")
-        # get the properties or columns
-        properties = grid.properties
-        # get the sort properties
-        sort_properties = grid.sort_properties
-        # current page
-        current_page = grid.page_position || 1
-        # sort information
-        sorted_by = grid.sorted_by
-        sort_direction = grid.sort_direction
-        commands = grid.commands
-        # get the source from either the tag or the component instance itself
-        source = tag.attr['source'] || grid.source
-        # get the array or collection that we can iterate over
-        iterator = tag.locals.send(source.to_sym) || tag.globals.send(source.to_sym)
-        
-        builder = Builder::XmlMarkup.new
-        
-        # build the table
-        builder.div(:class => "t-data-grid") {
-      
-          # configure pagination
-          #TODO need to implement page ranging
-          range = tag.attr['page_range'] || 5
-          available_rows = 0
-          unless grid.counter_method
-            available_rows = iterator.length
-          else
-            unless grid.counter_method_arguments
-              available_rows = iterator.send(grid.counter_method)
-            else
-              available_rows = iterator.send(grid.counter_method, grid.counter_method_arguments)
-            end
-          end
-
-          # configure the pager
-          pager = Paginator.new(available_rows, rows_per_page) do |offset, per_page|
-            rows = nil
-            unless grid.retrieve_method
-              if sorted_by
-                iterator = iterator.sort_by { |row| row.send(sorted_by) }
-                iterator.reverse! if sort_direction == :descending
-              end
-              rows = iterator[offset, per_page]
-            else
-              rows = grid.retrieve_method.call
-            end
-            rows
-          end
-
-          # get the current page from the pager
-          rows = pager.page(current_page)
-
-          # render the pager control if necessary
-          unless pager.number_of_pages < 2
-            builder.div(:class => "t-data-grid-pager") {
-              # loop over the pages
-              (1..pager.number_of_pages).each do |page_num|
-                if page_num == current_page
-                  builder.span("#{page_num}", :class => "current")
-                else
-                  builder.a("#{page_num}", :href => "#{url_root}/#{page.class.name}.page_grid#{tid}/#{page_num}", :title => "Go to page #{page_num}")                   
-                end
-              end
-            }
-          end
-                  
-          # build the html
-          builder.table(:class => "t-data-grid") {
-            # header
-            builder.thead {
-              builder.tr {
-                properties.each_index { |index| 
-                  property = properties[index]
-                  field_name = property.to_s.humanize
-  
-                  if properties.length == index + 1
-                    css_class = "#{field_name} t-last"
-                  elsif index == 0
-                    css_class = "#{field_name} t-first"
-                  else
-                    css_class = "#{field_name}"
-                  end
-                  
-                  sort_image = 'sortable.png'
-                  if property == sorted_by
-                    if sort_direction == :ascending
-                      sort_image = 'sort-desc.png'
-                    elsif sort_direction == :descending
-                      sort_image = 'sort-asc.png'
-                    end 
-                  end
-                  
-                  unless sort_properties.include?(property)
-                    builder.th(field_name, :class => css_class) 
-                  else
-                    builder.th(:class => css_class) {
-                      builder.a(field_name, :href => "#{url_root}/#{page.class.name}.sort_grid#{tid}/#{property}")
-                      builder.a(:href => "#{url_root}/#{page.class.name}.sort_grid#{tid}/#{property}") {
-                        builder.img(:alt => "[Sortable]", :class => "t-sort-icon", :id => "#{property}:sort", :src => "#{url_root}/images/#{sort_image}", :name => "#{property}:sort")
-                      }
-                    }
-                  end
-                }     
-                # add columns for commands
-                if commands && !commands.empty?
-                  (1..commands.size).each do
-                    builder.th 
-                  end
-                end                 
-              }
-            }
-
-            # body
-            builder.tbody {
-              # data
-              index = 0
-              rows.each do |item|
-                if (rows.last_item_number - rows.first_item_number) == index + 1
-                  css_class = "t-last"
-                elsif index == 0
-                  css_class = "t-first"
-                else
-                  css_class = nil
-                end
-                index = index + 1
-                
-                if css_class
-                  builder.tr(:class => css_class) {
-                    properties.each { |property|
-                      field_value = item.send(property)
-                      builder.td("#{field_value}", :class => "#{property}")
-                    }
-                    # add columns for commands
-                    if commands && !commands.empty?                     
-                      commands.each { |command|
-                        builder.td { |td| td << command.call(tag, item)}
-                      }
-                    end 
-                  }
-                else
-                  builder.tr {
-                    properties.each { |property|
-                      field_value = item.send(property)
-                      builder.td("#{field_value}", :class => "#{property}")
-                    }
-                    # add columns for commands
-                    if commands && !commands.empty?                     
-                      commands.each { |command|
-                        builder.td { |td| td << command.call(tag, item)}
-                      }
-                    end 
-                  }                  
-                end
-              end if rows       
-            }
-          }
-        }
-      end  
-    end
-    
-    class ObjectEditor < Trellis::Component
-      is_stateful
-      
-      depends_on :form, :submit
-      
-      field :model, :persistent => true
-      attr_reader :retrieve_block
-      attr_reader :properties
-      attr_accessor :submit_text
-      attr_reader :submit_block
-      
-      def initialize
-        @properties = []
-      end
-      
-      # must be called before rendering
-      def fields(*syms)
-        syms.each do |sym|
-          @properties << sym
-        end
-      end
-      
-      def on_submit(&block) 
-        # populate the object with values from the session
-        if page.params
-          properties.each do |property|
-            value = page.params[property.to_sym]
-            @model.instance_variable_set("@#{property}".to_sym, value)
-          end
-        end
-        if block_given?
-          @submit_block = block
-        else
-          @submit_block.call(@model)
-        end
-      end
-      
-      render do |tag|
-        url_root = tag.globals.page.class.url_root
-        # get the page object
-        page = tag.globals.page
-        # get the tag properties
-        tid = tag.attr['tid']
-        # get the instance of the component from the page
-        editor = page.send("object_editor_#{tid}")
-        # get the properties or columns
-        properties = editor.properties
-        # get the source from either the tag or the component instance itself
-        source = tag.attr['model'] || editor.model
-        submit_text = tag.attr['submit_text'] || editor.submit_text || "Submit"
-
-        builder = Builder::XmlMarkup.new
-        
-        # the editor encloses a form
-        form = tag.render("form", "tid" => "form_#{tid}", "method" => "post", "on_behalf" => "object_editor#{tid}") do
-          builder.div(:class => "t-beaneditor") {
-            properties.each { |property|
-              field_name = property.to_s.humanize
-              field_value = source.send(property)
-              builder.div(:class => "t-beaneditor-row") {
-                builder.label(field_name, :for => property, :id => "#{property}:label")
-                builder.input(:id => property, :name => property, :type => "text", :value => field_value)
-                builder.img(:alt => "[Error]", :class => "t-error-icon t-invisible", :id => "#{property}:icon", :src => "#{url_root}/images/field-error-marker.gif", :name => "#{property}:icon")     
-              }
-            } if source
-            builder.div(:class => "t-beaneditor-row") {
-              builder << tag.render("submit", "tid" => "submit", "name" => "whats_the_name", "value" => submit_text)
-            }
-          }
-        end
-        form
-      end
-
-    end
     
     class Div < Trellis::Component
       render do |tag|

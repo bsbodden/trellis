@@ -51,7 +51,7 @@ module Trellis
     # descendant application classes get a singleton class level instances for 
     # holding homepage, dependent pages, static resource routing paths
     def self.inherited(child) #:nodoc:
-      child.meta_attr_reader(:homepage)
+      child.class_attr_reader(:homepage)
       child.attr_array(:static_routes)
       child.meta_def(:logger) { Application.logger }
       super
@@ -95,7 +95,7 @@ module Trellis
 
     # find the first page with a suitable router, if none is found use the default router
     def find_router_for(request)
-      match = Page.subclasses.values.detect { |page| page.router && page.router.matches?(request) }
+      match = Page.subclasses.values.find { |page| page.router && page.router.matches?(request) }
       match ? match.router : DefaultRouter.new(:application => self)
     end
     
@@ -114,21 +114,25 @@ module Trellis
       page = route.destination.new if route.destination
       if page
         page.class.url_root = request.script_name
+        page.path = request.path_info.sub(/^\//, '')
         page.inject_dependent_pages
         page.call_if_provided(:before_load)
         page.load_page_session_information(session)
         page.call_if_provided(:after_load)
-        page.params = request.params.keys_to_symbols #TODO I might turn this into page instance variables
+        page.params = request.params.keys_to_symbols
         router.inject_parameters_into_page_instance(page, request)
-        page = page.process_event(route.event, route.value, route.source, session) if route.event
+        result = route.event ? page.process_event(route.event, route.value, route.source, session) : page
 
         # prepare the http response
-        if request.post? && page.kind_of?(Trellis::Page)
-          # redirect after post
+        if (request.post? || route.event) && result.kind_of?(Trellis::Page)
+          # for action events of posts then use redirect after post pattern
+          # remove the events path and just return to the page
+          path = result.path ? result.path.gsub(/\/events\/.*/, '') : result.class.class_to_sym
           response.status = 302
-          response.headers["Location"] = "#{request.script_name}/#{page.class.class_to_sym}"
+          response.headers["Location"] = "#{request.script_name}/#{path}"
         else
-          response.body = page.kind_of?(Trellis::Page) ? page.render : page
+          # for render requests simply render the page
+          response.body = result.kind_of?(Trellis::Page) ? result.render : result
           response.status = 200
         end
       else
@@ -152,11 +156,9 @@ module Trellis
   # -- Router --
   # A Router returns a Route in response to an HTTP request
   class Router
-    attr_reader :application
-    attr_reader :pattern
-    attr_reader :keys
-    attr_reader :path
-    attr_reader :page
+    EVENT_REGEX = %r{^(?:.+)/events/(?:([^/\.]+)(?:\.([^/\.]+)?)?)(?:/(?:([^\.]+)?))?}
+
+    attr_reader :application, :pattern, :keys, :path, :page
     
     def initialize(options={})
       @application = options[:application]
@@ -166,16 +168,18 @@ module Trellis
     end
 
     def route(request = nil)
-      Route.new(@page) if @page 
+      # get the event information if any
+      value, source, event = request.path_info.match(EVENT_REGEX).to_a.reverse if request
+      Route.new(@page, event, source, value)
     end
 
     def matches?(request)
-      request.path_info.match(@pattern) != nil
+      request.path_info.gsub(/\/events\/.*/, '').match(@pattern) != nil
     end
 
     def inject_parameters_into_page_instance(page, request)
       # extract parameters and named parameters from request
-      if @pattern && @page && match = @pattern.match(request.path_info)
+      if @pattern && @page && match = @pattern.match(request.path_info.gsub(/\/events\/.*/, ''))
         values = match.captures.to_a
         params =
           if @keys.any?
@@ -231,18 +235,32 @@ module Trellis
   # -- DefaultRouter --
   # The default routing scheme is in the form /page[.event[_source]][/value][?query_params]
   class DefaultRouter < Router
-    ROUTE_REGEX = %r{^(?:/)([^.]+)(?:.([^_/]+)(?:_([^/]+))?)?(?:/([\w]+)$)?}
-    
-    def route(request)   
-      value, source, event, destination = request.path_info.match(ROUTE_REGEX).to_a.reverse 
+    ROUTE_REGEX = %r{^/([^/]+)(?:/(?:events/(?:([^/\.]+)(?:\.([^/\.]+)?)?)(?:/(?:([^\.]+)?))?)?)?}
+
+    def route(request)
+      value, source, event, destination = request.path_info.match(ROUTE_REGEX).to_a.reverse
       destination = @application.class.homepage unless destination
       page = Page.get_page(destination.to_sym)
-      
-      Route.new(page, event, source, value)      
+
+      Route.new(page, event, source, value)
     end
 
     def matches?(request)
       request.path_info.match(ROUTE_REGEX) != nil
+    end
+
+    def self.to_uri(options={})
+      url_root = options[:url_root]
+      page = options[:page]
+      event = options[:event]
+      source = options[:source]
+      value = options[:value]
+      destination = page.kind_of?(Trellis::Page) ? (page.path || page.class.class_to_sym) : page
+      url_root = page.kind_of?(Trellis::Page) && page.class.url_root ? "/#{page.class.url_root}" : '/' unless url_root
+      source = source ? ".#{source}" : ''
+      value = value ? "/#{value}" : ''
+      event_info = event ? "/events/#{event}#{source}#{value}" : ''
+      "#{url_root}#{destination}#{event_info}"
     end
   end
   
@@ -256,7 +274,7 @@ module Trellis
     
     @@subclasses = Hash.new
     
-    attr_accessor :params, :logger
+    attr_accessor :params, :path, :logger
     
     def self.inherited(child) #:nodoc:
       @@subclasses[child.class_to_sym] = child
@@ -266,10 +284,10 @@ module Trellis
       child.attr_array(:components)
       child.attr_array(:stateful_components)
       child.attr_array(:persistents)
-      child.meta_attr_accessor :url_root
-      child.meta_attr_accessor :name
-      child.meta_attr_accessor :router
-      child.meta_attr_accessor :layout
+      child.class_attr_accessor :url_root
+      child.class_attr_accessor :name
+      child.class_attr_accessor :router
+      child.class_attr_accessor :layout
       child.meta_def(:add_stateful_component) { |tid,clazz| @stateful_components << [tid,clazz] }
  
       locate_template child        
@@ -317,7 +335,7 @@ module Trellis
     end
     
     def self.persistent(*fields)
-      meta_attr_reader fields
+      instance_attr_accessor fields
       @persistents = @persistents | fields    
     end
     
@@ -400,7 +418,7 @@ module Trellis
     
     def self.locate_template(clazz)   
       begin 
-        if clazz.url_root.nil? || clazz.url_root.blank?
+        if clazz.url_root.nil? || clazz.url_root.empty?
           dir = "#{File.dirname($0)}/../html/"
         else
           dir = "#{File.dirname($0)}#{clazz.url_root}/html/".gsub("Rack: ", '')
@@ -567,8 +585,8 @@ module Trellis
       # component registration
       @@components[child.class_to_sym] = child
 
-      child.meta_attr_accessor(:body)
-      child.meta_attr_accessor(:cname)
+      child.class_attr_accessor(:body)
+      child.class_attr_accessor(:cname)
       child.cname = child.underscore_class_name
       child.meta_def(:stateful?) { @stateful }
       
@@ -775,7 +793,7 @@ module Trellis
         # create pass-through methods for each event handler in the component (on_something methods)
         self.public_instance_methods.each do |method_name|
           if method_name.starts_with?('on_')
-            page.meta_def("#{method_name}_from_#{cname}#{id}") do |*args|
+            page.meta_def("#{method_name}_from_#{cname}_#{id}") do |*args|
               result = page.instance_variable_get("@#{cname}_#{id}".to_sym).send(method_name.to_sym, *args)
               # if the method returns a page, navigate to that page, otherwise navigate to the source page
               (result && result.kind_of?(String)) ? result : page
@@ -787,5 +805,7 @@ module Trellis
   end
   
   # load trellis core components
-  require 'trellis/core_components'
+  require 'trellis/component_library/core_components'
+  require 'trellis/component_library/grid'
+  require 'trellis/component_library/object_editor'
 end

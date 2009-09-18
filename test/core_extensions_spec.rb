@@ -80,7 +80,7 @@ end
 
 describe Class, " when calling attr_array with default options" do
   
-  before(:each) do
+  before :each do
     @target = Class.new
     @target.attr_array(:elements)
   end
@@ -95,7 +95,7 @@ end
 
 describe Class, " when calling attr_array with options {:create_accessor => false}" do
 
-  before(:each) do
+  before :each do
     @target = Class.new
     @target.attr_array(:elements, :create_accessor => false)    
   end
@@ -104,5 +104,37 @@ describe Class, " when calling attr_array with options {:create_accessor => fals
   
   it "should not create an accessor method for the array" do
     @target.should_not respond_to(:elements)
+  end
+end
+
+describe Class do
+
+  it "when calling class_attr_accessor should add class attribute accessors for each symbol passed" do
+    class Foo; end
+    Foo.class_attr_accessor(:bar)
+    Foo.should respond_to(:bar)
+    Foo.should respond_to(:bar=)
+  end
+
+  it "when calling class_attr_reader should add class attribute readers for each symbol passed" do
+    class Bar; end
+    Bar.class_attr_reader(:foo)
+    Bar.should respond_to(:foo)
+    Bar.should_not respond_to(:foo=)
+  end
+
+  it "when calling class_attr_writer should add class attribute readers for each symbol passed" do
+    class FooBar; end
+    FooBar.class_attr_writer(:bar)
+    FooBar.should_not respond_to(:bar)
+    FooBar.should respond_to(:bar=)
+  end
+
+  it "when calling instance_attr_accessor should add instance attribute accessors for each symbol passed" do
+    class Snafu; end
+    Snafu.instance_attr_accessor(:bar)
+    instance = Snafu.new
+    instance.should respond_to(:bar)
+    instance.should respond_to(:bar=)
   end
 end

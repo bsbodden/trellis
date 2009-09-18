@@ -18,4 +18,5 @@ desc "Run the specs under spec"
 Spec::Rake::SpecTask.new do |t|
   t.spec_opts = ['--options', "test/spec.opts"]
   t.spec_files = FileList['test/**/*_spec.rb']
+  #t.rcov = true
 end
