@@ -106,8 +106,8 @@ module Trellis
 
       Application.logger.debug "request received with url_root of #{request.script_name}"
 
-      session = env["rack.session"]  
-      
+      session = env["rack.session"]
+
       router = find_router_for(request)
       route = router.route(request)
       
@@ -639,10 +639,6 @@ module Trellis
       send("#{sym}=", default_value) if default_value
     end 
     
-    def self.dom_contribution(&block) #TODO names don't match!
-      @document_modifications << block
-    end
-    
     def self.add_style_links_to_page(page, attributes)
       style_links.each do |href|  
         href = href.replace_ant_style_properties(attributes) if attributes
@@ -711,13 +707,17 @@ module Trellis
       end
     end
 
-    def self.page_contribution(sym, contribution, options=nil)
-      # add the contribution to the appropriate array of contributions
-      # scripts, class_scripts, styles, class_styles, script_links, style_links
-      scope = options[:scope] || :class if options
-      receiver = sym.to_s.plural
-      receiver = "class_#{receiver}" if scope == :class
-      instance_variable_get("@#{receiver}").send(:<<, contribution)      
+    def self.page_contribution(sym, contribution=nil, options=nil, &block)
+      unless (sym == :dom && block_given?)
+        # add the contribution to the appropriate array of contributions
+        # scripts, class_scripts, styles, class_styles, script_links, style_links
+        scope = options[:scope] || :class if options
+        receiver = sym.to_s.plural
+        receiver = "class_#{receiver}" if scope == :class
+        instance_variable_get("@#{receiver}").send(:<<, contribution)
+      else
+        @document_modifications << block
+      end
     end    
     
     def self.get_component(sym)
@@ -754,7 +754,7 @@ module Trellis
     def save_component_session_information(page, instance_variable_name, session_data)
       self.class.persistents.each do |field|
         key = "#{page.class}_#{self.class}_#{instance_variable_name}_#{field}"
-        session_data[key] = instance_variable_get("@#{field}".to_sym)
+        session_data[key] = instance_variable_get("@#{field}".to_sym) if session_data
       end 
     end 
 
@@ -762,7 +762,7 @@ module Trellis
       self.class.persistents.each do |field|
         field_sym = "@#{field}".to_sym
         current_value = instance_variable_get(field_sym)
-        new_value = session_data["#{page.class}_#{self.class}_#{instance_variable_name}_#{field}"]
+        new_value = session_data["#{page.class}_#{self.class}_#{instance_variable_name}_#{field}"] if session_data
         if current_value != new_value && new_value != nil
           instance_variable_set(field_sym, new_value)
         end      

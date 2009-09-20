@@ -1,3 +1,10 @@
+== 0.0.2 2009-09-19
+
+* 3 major enhancements:
+  * event subsystem revamped
+  * custom routing
+  * more tests!
+
 == 0.0.1 2009-08-29
 
 * 1 major enhancement:

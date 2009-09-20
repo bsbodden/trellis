@@ -3,6 +3,7 @@ require File.dirname(__FILE__) + '/spec_helper.rb'
 describe Trellis::DefaultRouter, " when processing a request" do
   before do
     @regexp = Trellis::DefaultRouter::ROUTE_REGEX
+    @router = Trellis::DefaultRouter.new
   end
 
   it "should extract the page" do
@@ -72,5 +73,19 @@ describe Trellis::DefaultRouter, " when processing a request" do
     page = TestApp::Home.new
     path = Trellis::DefaultRouter.to_uri(:page => page, :event => 'event', :source => 'source', :value => 'value')
     path.should == "/home/events/event.source/value"
+  end
+
+  it "should match valid patterns" do
+    page_request = mock('request', :path_info => '/page')
+    page_event_request = mock('request', :path_info => '/page/events/event')
+    page_event_source_request = mock('request', :path_info => '/page/events/event.source')
+    page_event_value_request = mock('request', :path_info => '/page/events/event/value')
+    page_event_source_value_request = mock('request', :path_info => '/page/events/event.source/value')
+
+    @router.matches?(page_request).should be_true
+    @router.matches?(page_event_request).should be_true
+    @router.matches?(page_event_source_request).should be_true
+    @router.matches?(page_event_value_request).should be_true
+    @router.matches?(page_event_source_value_request).should be_true
   end
 end
