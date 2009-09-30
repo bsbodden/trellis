@@ -38,6 +38,7 @@ require 'markaby'
 require 'redcloth'
 require 'bluecloth'
 require 'english/inflect'
+require 'directory_watcher'
 
 module Trellis
 
@@ -71,18 +72,26 @@ module Trellis
     # bootstrap the application
     def start(port = 3000)
       Application.logger.info "Starting Trellis Application #{self.class} on port #{port}"
+
+      directory_watcher = configure_directory_watcher
+      directory_watcher.start
+
       Rack::Handler::Mongrel.run configured_instance, :Port => port do |server|
         trap(:INT) do
           Application.logger.info "Exiting Trellis Application #{self.class}"
+          directory_watcher.stop
           server.stop
         end
       end
+    rescue Exception => e
+      Application.logger.warn "#{ e } (#{ e.class })!"
     end
     
     def configured_instance
       # configure rack middleware
       application = Rack::ShowStatus.new(self)
       application = Rack::ShowExceptions.new(application)
+      application = Rack::Reloader.new(application)
       application = Rack::CommonLogger.new(application, Application.logger)
       application = Rack::Session::Cookie.new(application)
 
@@ -139,6 +148,36 @@ module Trellis
         response.status = 404
       end
       response.finish
+    end
+
+    private
+
+    def configure_directory_watcher(directory = nil)
+      # set directory watcher to reload templates
+      glob = []
+      Page::TEMPLATE_FORMATS.each do |format|
+        glob << "*.#{format}"
+      end
+
+      templates_directory = directory || "#{File.dirname($0)}/../html/"
+
+      directory_watcher = DirectoryWatcher.new templates_directory, :glob => glob, :pre_load => true
+      directory_watcher.add_observer do |*args|
+        args.each do |event|
+          Application.logger.debug "directory watcher: #{event}"
+          event_type = event.type.to_s
+          if (event_type == 'modified' || event_type == 'stable')
+            template = event.path
+            format = File.extname(template).delete('.').to_sym
+            page_locator = Page.template_registry[template]
+            page = Page.get_page(page_locator)
+            Application.logger.info "reloading template for page => #{page}: #{template}"
+            File.open(template, "r") { |f| page.template(f.read, :format => format) }
+          end
+        end
+      end
+      Application.logger.info "watching #{templates_directory} for template changes..."
+      directory_watcher
     end
   end
   
@@ -271,8 +310,11 @@ module Trellis
   # A Trellis Page contains listener methods to respond to events trigger by 
   # components in the same page or other pages
   class Page
+
+    TEMPLATE_FORMATS = [:html, :xhtml, :haml, :textile, :markdown]
     
     @@subclasses = Hash.new
+    @@template_registry = Hash.new
     
     attr_accessor :params, :path, :logger
     
@@ -409,9 +451,19 @@ module Trellis
     def self.inject_dependent_pages(target)
       @pages.each do |sym|
         clazz = Page.get_page(sym)
-        target.instance_variable_set("@#{sym}".to_sym, clazz.new)
-        target.meta_def(sym) { instance_variable_get("@#{sym}") }
+        if clazz
+          Application.logger.debug "injecting an instance of #{clazz} for #{sym}"
+          target.instance_variable_set("@#{sym}".to_sym, clazz.new)
+          target.meta_def(sym) { instance_variable_get("@#{sym}") }
+        else
+          # throw an exception in production mode or
+          # dynamically generate a page in development mode
+        end
       end
+    end
+
+    def self.template_registry
+      @@template_registry
     end
     
     private 
@@ -427,12 +479,15 @@ module Trellis
 
         Application.logger.debug "looking for template #{base} in #{dir}"        
 
-        [:xhtml, :haml, :textile, :markdown].each do |format|
+        TEMPLATE_FORMATS.each do |format|
           filename = "#{base}.#{format}"
           file = File.find_first(dir, filename)
           if file
             Application.logger.debug "found template for page => #{clazz}: #{filename}"
             File.open(file, "r") { |f| clazz.template(f.read, :format => format) }
+            # add the template file to the external template registry so that we can reload it
+            @@template_registry["#{dir}#{filename}"] = clazz.class_to_sym
+            Application.logger.debug "registering template file for #{clazz.class_to_sym} => #{dir}#{filename}"
             break
           end
         end
