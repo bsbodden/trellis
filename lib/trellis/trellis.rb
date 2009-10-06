@@ -38,6 +38,7 @@ require 'markaby'
 require 'redcloth'
 require 'bluecloth'
 require 'english/inflect'
+require 'facets'
 require 'directory_watcher'
 
 module Trellis
@@ -113,7 +114,7 @@ module Trellis
       response = Rack::Response.new
       request = Rack::Request.new(env)
 
-      Application.logger.debug "request received with url_root of #{request.script_name}"
+      Application.logger.debug "request received with url_root of #{request.script_name}" if request.script_name
 
       session = env["rack.session"]
 
@@ -132,6 +133,8 @@ module Trellis
         router.inject_parameters_into_page_instance(page, request)
         result = route.event ? page.process_event(route.event, route.value, route.source, session) : page
 
+        Application.logger.debug "response is #{result} an instance of #{result.class}"
+
         # prepare the http response
         if (request.post? || route.event) && result.kind_of?(Trellis::Page)
           # for action events of posts then use redirect after post pattern
@@ -139,6 +142,7 @@ module Trellis
           path = result.path ? result.path.gsub(/\/events\/.*/, '') : result.class.class_to_sym
           response.status = 302
           response.headers["Location"] = "#{request.script_name}/#{path}"
+          Application.logger.debug "redirecting to ==> #{request.script_name}/#{path}"
         else
           # for render requests simply render the page
           response.body = result.kind_of?(Trellis::Page) ? result.render : result
@@ -319,7 +323,8 @@ module Trellis
     attr_accessor :params, :path, :logger
     
     def self.inherited(child) #:nodoc:
-      @@subclasses[child.class_to_sym] = child
+      sym = child.class_to_sym
+      @@subclasses[sym] = child if sym
       
       child.instance_variable_set(:@name, child.underscore_class_name)
       child.attr_array(:pages, :create_accessor => false)
@@ -451,14 +456,33 @@ module Trellis
     def self.inject_dependent_pages(target)
       @pages.each do |sym|
         clazz = Page.get_page(sym)
-        if clazz
-          Application.logger.debug "injecting an instance of #{clazz} for #{sym}"
-          target.instance_variable_set("@#{sym}".to_sym, clazz.new)
-          target.meta_def(sym) { instance_variable_get("@#{sym}") }
-        else
-          # throw an exception in production mode or
-          # dynamically generate a page in development mode
+        # if the injected page class is not found
+        # throw an exception in production mode or
+        # dynamically generate a page in development mode
+        unless clazz
+          target_class = sym.to_s.camelcase(:upper)
+          Application.logger.debug "creating stand in page class #{target_class} for symbol #{sym}"
+
+          clazz = Page.create_child(target_class) do
+
+            def method_missing(sym, *args, &block)
+              Application.logger.debug "faking response to #{sym}(#{args}) from #{self} an instance of #{self.class}"
+              self
+            end
+
+            template do
+              xhtml_strict {
+                head { title "Stand-in Page" }
+                body { h1 { text %[Stand-in Page for <trellis:value name="page_name"/>] }}
+              }
+            end
+          end
+          Page.subclasses[sym] = clazz
         end
+        
+        Application.logger.debug "injecting an instance of #{clazz} for #{sym}"
+        target.instance_variable_set("@#{sym}".to_sym, clazz.new)
+        target.meta_def(sym) { instance_variable_get("@#{sym}") }
       end
     end
 
@@ -599,6 +623,9 @@ module Trellis
           @context.globals.send(sym, value)
         end
       end
+
+      # add other useful values to the tag context
+      @context.globals.send(:page_name=, page.class.to_s)
 
       #TODO add public page methods to the context
 

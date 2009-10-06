@@ -48,6 +48,13 @@ describe Class, " when calling underscore_class_name" do
     sym = Boo::SomeOtherClass.underscore_class_name
     sym.should eql("some_other_class")
   end
+
+  it "should return a valid underscore ruby identifier string for an annonymous class" do
+    class TheParent; end
+    TheParent.create_child "AnnonymousChild"
+    sym = AnnonymousChild.underscore_class_name
+    sym.should eql("annonymous_child")
+  end
 end
 
 # class_to_sym
@@ -65,6 +72,13 @@ describe Class, " when calling class_to_sym" do
     end
     sym = Boo::SomeOtherClass.class_to_sym
     sym.should eql(:some_other_class)
+  end
+
+  it "should return a valid underscore ruby identifier as a symbol for an annonymous class" do
+    class TheParent; end
+    TheParent.create_child "AnotherAnnonymousChild"
+    sym = AnotherAnnonymousChild.class_to_sym
+    sym.should eql(:another_annonymous_child)
   end
 end
 

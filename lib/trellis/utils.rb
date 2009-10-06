@@ -50,7 +50,8 @@ class Class #:nodoc:
   end
   
   def underscore_class_name
-    name.to_s.gsub(/::/, '/').
+    value = (name.empty? || name =~ /<class:(.*)/) ? self : name
+    value.to_s.gsub(/::/, '/').
       gsub(/([A-Z]+)([A-Z][a-z])/,'\1_\2').
       gsub(/([a-z\d])([A-Z])/,'\1_\2').
       tr("-", "_").
@@ -87,6 +88,14 @@ class Class #:nodoc:
     instance_variable_set("@#{plural_array_name_sym}".to_sym, Array.new)
     meta_def(plural_array_name_sym) { instance_variable_get("@#{plural_array_name_sym}".to_sym) } if create_accessor
   end
+
+  def create_child(class_name, mod = Object, register = true, &block)
+    klass = Class.new self
+    klass.class_eval &block if block_given?
+    mod.const_set class_name, klass if register
+    klass
+  end
+
 end
 
 class String #:nodoc:
