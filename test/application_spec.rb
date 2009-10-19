@@ -89,7 +89,7 @@ describe Trellis::Application, " requesting a route" do
     response.body.should == '<html><body>goodbye/cruel/world</body></html>'
   end
 
-  it "should supports mixing multiple splat" do
+  it "should supports mixing multiple splats" do
     response = @request.get('/splats/bar/foo/bling/baz/boom')
     response.body.should == '<html><body>barblingbaz/boom</body></html>'
 
@@ -100,5 +100,20 @@ describe Trellis::Application, " requesting a route" do
   it "should supports mixing named and wildcard params" do
     response = @request.get('/mixed/afoo/bar/baz')
     response.body.should == '<html><body>bar/baz-afoo</body></html>'
+  end
+
+  it "should merge named params and query string params" do
+    response_mr_bean = @request.get("/hello/Bean?salutation=Mr.%20")
+    response_mr_bean.body.should == "<html><body><h2>Hello</h2>Mr. Bean</body></html>"
+  end
+
+  it "should match a dot ('.') as part of a named param" do
+    response = @request.get("/foobar/user@example.com/thebar")
+    response.body.should == "<html><body>user@example.com-thebar</body></html>"
+  end
+
+  it "should match a literal dot ('.') outside of named params" do
+    response = @request.get("/downloads/logo.gif")
+    response.body.should == "<html><body>logo-gif</body></html>"
   end
 end

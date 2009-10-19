@@ -1,6 +1,17 @@
-== 0.0.2 2009-09-19
+== 0.0.4
+* 1 major enhancement:
+  * tests for Renderer
+  * more routing test
+  * request query params now available to page as instance variables
 
-* 3 major enhancements:
+== 0.0.3
+* 1 major enhancement:
+  * stand-in pages
+
+== 0.0.2 2009-09-19
+* 5 major enhancement:
+  * code reloading
+  * template reloading
   * event subsystem revamped
   * custom routing
   * more tests!

@@ -239,6 +239,7 @@ module Trellis
           else
             {}
           end
+        params << request.params
         params.each_pair { |name, value| page.instance_variable_set("@#{name}".to_sym, value) }
       end
     end
@@ -353,7 +354,7 @@ module Trellis
         when :textile  
           html = RedCloth.new(body).to_html
         when :markdown
-          html = BlueCloth.new(body).to_html
+          html = "<html><body>#{BlueCloth.new(body).to_html}</body></html>"
         else # assume the body is (x)html 
           html = body
         end
@@ -408,7 +409,7 @@ module Trellis
       unless value
         method_result = send method.to_sym
       else
-        method_result = send method.to_sym, value
+        method_result = send method.to_sym, Rack::Utils.unescape(value)
       end
 
       # determine navigation flow based on the return value of the method call
@@ -629,7 +630,6 @@ module Trellis
 
       #TODO add public page methods to the context
 
-      
       # add the page to the context too
       @context.globals.page = page
       

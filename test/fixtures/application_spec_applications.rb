@@ -22,6 +22,10 @@ module TestApp
     def on_event3 
       @other
     end
+
+    def on_event4(value)
+      "the value is #{value}"
+    end
   end
   
   class Other < Trellis::Page    
@@ -61,7 +65,7 @@ module TestApp
       html { 
         body { 
           h2 "Hello"
-          text %[<trellis:value name="name"/>] 
+          text %[<trellis:value name="salutation"/><trellis:value name="name"/>]
         }
       } 
     end
@@ -134,6 +138,70 @@ module TestApp
         }
       }
     end
+  end
+
+  class RoutedWithTwoParams < Trellis::Page
+    route '/foobar/:foo/:bar'
+
+    template do
+      html {
+        body {
+          text %[<trellis:value name="foo"/>]
+          text '-'
+          text %[<trellis:value name="bar"/>]
+        }
+      }
+    end
+  end
+
+  class RoutedWithImplicitDot < Trellis::Page
+    route '/downloads/:file.:ext'
+
+    template do
+      html {
+        body {
+          text %[<trellis:value name="file"/>]
+          text '-'
+          text %[<trellis:value name="ext"/>]
+        }
+      }
+    end
+  end
+
+  class SamplePage < Trellis::Page
+    attr_accessor :value
+    template do html { body { text %[<trellis:value name="value"/>] }} end
+  end
+
+  class AnotherSamplePage < Trellis::Page
+    template do html { body { text %[<trellis:value name="page_name"/>] }} end
+  end
+
+  class HamlPage < Trellis::Page
+    template %[!!! XML
+!!! Strict
+%html{ :xmlns => "http://www.w3.org/1999/xhtml" }
+  %head
+    %meta{ :content => "text/html; charset=UTF-8", "http-equiv" => "Content-Type" }
+    %title
+      This is a HAML page
+  %body
+    %h1
+      Page Title
+    %p
+      HAML rocks!], :format => :haml
+  end
+
+  class TextilePage < Trellis::Page
+    template %[A *simple* example.], :format => :textile
+  end
+
+  class MarkDownPage < Trellis::Page
+    template "# This is the Title\n## This is the SubTitle\nThis is some text", :format => :markdown
+  end
+
+  class HTMLPage < Trellis::Page
+    template "<html><body><h1>This is just HTML</h1></body></html>"
   end
 
 end

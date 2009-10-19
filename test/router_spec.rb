@@ -48,5 +48,5 @@ describe Trellis::Router, " when constructed" do
     @router = Trellis::Router.new(:path => '/*')
     @router.keys.should include('splat')
   end
-    
+  
 end
