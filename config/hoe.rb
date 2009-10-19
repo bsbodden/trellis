@@ -9,20 +9,23 @@ HOMEPATH = "http://#{RUBYFORGE_PROJECT}.rubyforge.org"
 DOWNLOAD_PATH = "http://rubyforge.org/projects/#{RUBYFORGE_PROJECT}"
 EXTRA_DEPENDENCIES = [
   ['paginator', '>= 1.1.1'],
-  ['rack', '>= 0.4.0'],
-  ['radius', '>= 0.5.1'],
+  ['rack', '>= 1.0.1'],
+  ['radius', '>= 0.6.1'],
   ['builder', '>= 2.1.2'],
   ['hpricot', '>= 0.6.0'],
   ['extensions', '>= 0.6.0'],
-  ['haml', '>= 2.0.3'],
-  ['RedCloth', '>= 4.0.3'],
-  ['BlueCloth', '>= 1.0.0'],
+  ['haml', '>= 2.2.9'],
+  ['RedCloth', '>= 4.2.2'],
+  ['bluecloth', '>= 2.0.5'],
   ['markaby', '>= 0.5'],
-  ['log4r', '>= 1.0.5'],
-  ['dm-core', '>= 0.9.5'],
-  ['dm-validations', '>= 0.9.5'],
-  ['dm-timestamps', '>= 0.9.5'],
-  ['english', '>= 0.2.0']  
+  ['log4r', '>= 1.1.2'],
+  ['english', '>= 0.4.0'],
+  ['facets', '>= 2.7.0'],
+  ['directory_watcher', '>= 1.2.0'], 
+  ['rack-cache', '>= 0.5.2'],
+  ['rack-contrib', '>= 0.9.2'],
+  ['rack-test', '>= 0.5.0'],
+  ['rspec', '>= 1.2.9']
 ]    # An array of rubygem dependencies [name, version]
 
 @config_file = "~/.rubyforge/user-config.yml"
@@ -62,18 +65,19 @@ end
 
 # Generate all the Rake tasks
 # Run 'rake -T' to see list of generated tasks (from gem root directory)
-$hoe = Hoe.new(GEM_NAME, VERS) do |p|
-  p.developer(AUTHOR, EMAIL)
-  p.description = DESCRIPTION
-  p.summary = DESCRIPTION
-  p.url = HOMEPATH
-  p.rubyforge_name = RUBYFORGE_PROJECT if RUBYFORGE_PROJECT
-  p.test_globs = ["test/**/test_*.rb"]
-  p.clean_globs |= ['**/.*.sw?', '*.gem', '.config', '**/.DS_Store']  #An array of file patterns to delete on clean.
+$hoe = Hoe.spec GEM_NAME do
+  self.version = VERS
+  self.developer(AUTHOR, EMAIL)
+  self.description = DESCRIPTION
+  self.summary = DESCRIPTION
+  self.url = HOMEPATH
+  self.rubyforge_name = RUBYFORGE_PROJECT if RUBYFORGE_PROJECT
+  self.test_globs = ["test/**/test_*.rb"]
+  self.clean_globs |= ['**/.*.sw?', '*.gem', '.config', '**/.DS_Store']  #An array of file patterns to delete on clean.
 
   # == Optional
-  p.changes = p.paragraphs_of("History.txt", 0..1).join("\n\n")
-  p.extra_deps = EXTRA_DEPENDENCIES
+  self.changes = paragraphs_of("History.txt", 0..1).join("\n\n")
+  self.extra_deps = EXTRA_DEPENDENCIES
 end
 
 CHANGES = $hoe.paragraphs_of('History.txt', 0..1).join("\\n\\n")
