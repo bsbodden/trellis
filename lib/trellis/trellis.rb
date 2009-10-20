@@ -37,7 +37,6 @@ require 'haml'
 require 'markaby'
 require 'redcloth'
 require 'bluecloth'
-require 'english/inflect'
 require 'facets'
 require 'directory_watcher'
 
