@@ -24,12 +24,6 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #++
 
-module Kernel
-  def with( object, &block )
-    object.instance_eval(&block); object
-  end
-end
-
 class Object #:nodoc:
   def meta_def(m,&b) #:nodoc:
     metaclass.send(:define_method,m,&b)
