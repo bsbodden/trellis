@@ -1,7 +1,9 @@
+.gitignore
 History.txt
 License.txt
 Manifest.txt
 README
+README.txt
 Rakefile
 config/hoe.rb
 config/requirements.rb
@@ -109,6 +111,7 @@ test/component_spec.rb
 test/core_extensions_spec.rb
 test/default_router_spec.rb
 test/fixtures/application_spec_applications.rb
+test/fixtures/component_spec_components.rb
 test/page_spec.rb
 test/renderer_spec.rb
 test/router_spec.rb
