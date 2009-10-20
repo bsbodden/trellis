@@ -19,7 +19,6 @@ EXTRA_DEPENDENCIES = [
   ['bluecloth', '>= 2.0.5'],
   ['markaby', '>= 0.5'],
   ['log4r', '>= 1.1.2'],
-  ['english', '>= 0.4.0'],
   ['facets', '>= 2.7.0'],
   ['directory_watcher', '>= 1.2.0'], 
   ['rack-cache', '>= 0.5.2'],

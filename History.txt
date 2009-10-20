@@ -1,8 +1,9 @@
 == 0.0.4
 * 1 major enhancement:
   * tests for Renderer
-  * more routing test
+  * more routing tests
   * request query params now available to page as instance variables
+  * cleaned up dependencies
 
 == 0.0.3
 * 1 major enhancement:
