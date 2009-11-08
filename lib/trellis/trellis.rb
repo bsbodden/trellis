@@ -39,6 +39,7 @@ require 'redcloth'
 require 'bluecloth'
 require 'facets'
 require 'directory_watcher'
+require 'erubis'
 
 module Trellis
 
@@ -115,7 +116,7 @@ module Trellis
 
       Application.logger.debug "request received with url_root of #{request.script_name}" if request.script_name
 
-      session = env["rack.session"]
+      session = env["rack.session"] || {}
 
       router = find_router_for(request)
       route = router.route(request)
@@ -315,7 +316,7 @@ module Trellis
   # components in the same page or other pages
   class Page
 
-    TEMPLATE_FORMATS = [:html, :xhtml, :haml, :textile, :markdown]
+    TEMPLATE_FORMATS = [:html, :xhtml, :haml, :textile, :markdown, :eruby]
     
     @@subclasses = Hash.new
     @@template_registry = Hash.new
@@ -342,19 +343,19 @@ module Trellis
     end  
     
     def self.template(body = nil, options = nil, &block)
-      format = options[:format] if options
+      @format = (options[:format] if options) || :html
       if block_given?
         mab = Markaby::Builder.new({}, self, &block)
         html = mab.to_s
       else
-        case format
+        case @format
         when :haml
           html = Haml::Engine.new(body).render
         when :textile  
           html = RedCloth.new(body).to_html
         when :markdown
           html = "<html><body>#{BlueCloth.new(body).to_html}</body></html>"
-        else # assume the body is (x)html 
+        else # assume the body is (x)html, also eruby is treated as (x)html at this point
           html = body
         end
       end
@@ -370,6 +371,10 @@ module Trellis
         locate_template(self)
       end 
       @template
+    end
+    
+    def self.format
+      @format
     end
 
     def self.pages(*syms)
@@ -614,6 +619,8 @@ module Trellis
     def initialize(page)
       @page = page
       @context = Context.new
+      # context for erubis templates
+      @eruby_context = {} if @page.class.format == :eruby
       
       # add all instance variables in the page as values accesible from the tags
       page.instance_variables.each do |var|
@@ -621,16 +628,19 @@ module Trellis
         unless value.kind_of?(Trellis::Page)
           sym = "#{var}=".split('@').last.to_sym
           @context.globals.send(sym, value)
+          @eruby_context["#{var}".split('@').last] = value if @eruby_context
         end
       end
 
       # add other useful values to the tag context
       @context.globals.send(:page_name=, page.class.to_s)
+      @eruby_context[:page_name] = page.class.to_s if @eruby_context
 
       #TODO add public page methods to the context
 
       # add the page to the context too
       @context.globals.page = page
+      @eruby_context[:page] = page if @eruby_context
       
       # register the components contained in the page with the renderer's context
       page.class.components.each do |component|
@@ -641,7 +651,13 @@ module Trellis
     end
     
     def render
-      @parser.parse(@page.class.parsed_template.to_html)
+      unless @page.class.format == :eruby
+        @parser.parse(@page.class.parsed_template.to_html)
+      else
+        puts "eruby context is #{@eruby_context}"
+        preprocessed = Erubis::PI::Eruby.new(@page.class.parsed_template.to_html, :trim => false).evaluate(@eruby_context)
+        @parser.parse(preprocessed)
+      end
     end
     
   end # renderer

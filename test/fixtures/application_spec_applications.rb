@@ -203,5 +203,16 @@ module TestApp
   class HTMLPage < Trellis::Page
     template "<html><body><h1>This is just HTML</h1></body></html>"
   end
+  
+  class ERubyPage < Trellis::Page
+    attr_reader :list
+    
+    def initialize
+      self
+      @list = ["Hey", "bud", "let's", "party!"]
+    end
+    
+    template %[<html><body><ul><?rb for item in @list ?><li>@{item}@</li><?rb end ?></ul></body></html>], :format => :eruby
+  end
 
 end
