@@ -1,5 +1,13 @@
-== 0.0.5
+== 0.0.6
+* 2 major enhancement:
+  * added dup.call for thread safety
+  * added ability to select Rack::Session middleware implementation 
+    between cookie, pool and memcached
 
+== 0.0.5
+* 2 major enhancements:
+  * template can now use erb (erubis using Processing Instructions (PI))
+  * added check for nil Rack::Session when using Cookie Store
 
 == 0.0.4
 * 1 major enhancement:
@@ -13,7 +21,7 @@
   * stand-in pages
 
 == 0.0.2 2009-09-19
-* 5 major enhancement:
+* 5 major enhancements:
   * code reloading
   * template reloading
   * event subsystem revamped
@@ -23,4 +31,4 @@
 == 0.0.1 2009-08-29
 
 * 1 major enhancement:
-  * Initial release
+  * initial release

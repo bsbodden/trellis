@@ -84,6 +84,7 @@ examples/hilo/html/guess.xhtml
 examples/hilo/html/start.xhtml
 examples/hilo/source/hilo.rb
 examples/routing/source/routing.rb
+examples/sessions/source/sessions.rb
 examples/simplest/source/simplest.rb
 examples/stateful_counters/html/counters.xhtml
 examples/stateful_counters/html/style/main.css

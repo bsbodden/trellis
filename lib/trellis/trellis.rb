@@ -40,6 +40,7 @@ require 'bluecloth'
 require 'facets'
 require 'directory_watcher'
 require 'erubis'
+require 'ostruct'
 
 module Trellis
 
@@ -54,8 +55,10 @@ module Trellis
     # holding homepage, dependent pages, static resource routing paths
     def self.inherited(child) #:nodoc:
       child.class_attr_reader(:homepage)
+      child.class_attr_reader(:session_config)
       child.attr_array(:static_routes)
       child.meta_def(:logger) { Application.logger }
+      child.instance_variable_set(:@session_config, OpenStruct.new({:impl => :cookie}))
       super
     end
 
@@ -63,6 +66,10 @@ module Trellis
     # the entry point is the URL pattern / where the application is mounted
     def self.home(sym)
       @homepage = sym   
+    end
+    
+    def self.session(sym, options={})
+      @session_config = OpenStruct.new({:impl => sym, :options => options}) 
     end 
     
     # define url paths for static resources
@@ -77,7 +84,7 @@ module Trellis
       directory_watcher = configure_directory_watcher
       directory_watcher.start
 
-      Rack::Handler::Mongrel.run configured_instance, :Port => port do |server|
+      Rack::Handler::Mongrel.run configured, :Port => port do |server|
         trap(:INT) do
           Application.logger.info "Exiting Trellis Application #{self.class}"
           directory_watcher.stop
@@ -88,13 +95,23 @@ module Trellis
       Application.logger.warn "#{ e } (#{ e.class })!"
     end
     
-    def configured_instance
+    def configured
       # configure rack middleware
       application = Rack::ShowStatus.new(self)
       application = Rack::ShowExceptions.new(application)
       application = Rack::Reloader.new(application)
       application = Rack::CommonLogger.new(application, Application.logger)
-      application = Rack::Session::Cookie.new(application)
+      
+      # configure rack session
+      session_config = self.class.session_config
+      case session_config.impl
+      when :pool
+        application = Rack::Session::Pool.new(application, session_config.options)
+      when :memcached
+        application = Rack::Session::Memcache.new(application, session_config.options)
+      else
+        application = Rack::Session::Cookie.new(application)
+      end
 
       # set all static resource paths
       self.class.static_routes.each do |path|
@@ -109,14 +126,19 @@ module Trellis
       match ? match.router : DefaultRouter.new(:application => self)
     end
     
-    # implements the rack specification
+    # Rack call interface.
     def call(env)
+      dup.call!(env)
+    end
+    
+    # implements the rack specification
+    def call!(env)
       response = Rack::Response.new
       request = Rack::Request.new(env)
 
       Application.logger.debug "request received with url_root of #{request.script_name}" if request.script_name
 
-      session = env["rack.session"] || {}
+      session = env['rack.session'] ||= {}
 
       router = find_router_for(request)
       route = router.route(request)
@@ -654,7 +676,6 @@ module Trellis
       unless @page.class.format == :eruby
         @parser.parse(@page.class.parsed_template.to_html)
       else
-        puts "eruby context is #{@eruby_context}"
         preprocessed = Erubis::PI::Eruby.new(@page.class.parsed_template.to_html, :trim => false).evaluate(@eruby_context)
         @parser.parse(preprocessed)
       end
