@@ -240,3 +240,15 @@ module Utils
   
 end
 
+module Markaby
+  class Builder
+    def thtml(&block)
+      tag!(:html,
+           :xmlns => "http://www.w3.org/1999/xhtml",
+           "xml:lang" => "en",
+           :lang => "en",
+           "xmlns:trellis" => "http://trellisframework.org/schema/trellis_1_0_0.xsd", &block)
+    end
+  end
+end
+

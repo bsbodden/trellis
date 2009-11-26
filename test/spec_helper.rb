@@ -14,3 +14,5 @@ FIXTURES = File.expand_path(File.join(File.dirname(__FILE__), 'fixtures')) unles
 def require_fixtures(path)
   require File.expand_path(File.join(FIXTURES, path))
 end
+
+THTML_TAG = %[<html xml:lang="en" lang="en" xmlns:trellis="http://trellisframework.org/schema/trellis_1_0_0.xsd" xmlns="http://www.w3.org/1999/xhtml">]

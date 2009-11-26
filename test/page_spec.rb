@@ -33,12 +33,12 @@ describe Trellis::Page, " when sending an event to a page" do
   
   it "should invoke the before_load method if provided by the page" do
     response = @request.get("/before_load")
-    response.body.should == "<html><body>8675309</body></html>"
+    response.body.should == "#{THTML_TAG}<body>8675309</body></html>"
   end
   
   it "should invoke the after_load method if provided by the page" do
     response = @request.get("/after_load")
-    response.body.should == "<html><body>chunky bacon!</body></html>"    
+    response.body.should == "#{THTML_TAG}<body>chunky bacon!</body></html>"    
   end
 end
 
@@ -56,6 +56,29 @@ describe Trellis::Page, " when created with a custom route" do
     router = TestApp::RoutedDifferently.router
     router.should_not be_nil
     router.should be_an_instance_of(Trellis::Router)
+  end
+end
+
+describe Trellis::Page, " when provided with a get method" do
+  before(:each) do
+    @application = TestApp::MyApp.new
+    @request = Rack::MockRequest.new(@application)
+  end
+
+  it "should redirect to the page returned" do
+    response = @request.get("/page_with_get_redirect")
+    response.status.should be(302)
+    response.headers['Location'].should == '/other'
+  end
+  
+  it "should return a response as a string if the get methood returns a String" do
+    response = @request.get("/page_with_get_plain_text")
+    response.body.should == "some content"
+  end
+  
+  it "should render the result of the get method if it is the same page" do
+    response = @request.get("/page_with_get_same")
+    response.body.should == "<html><body><p>Vera, what has become of you?</p></body></html>"
   end
 end
 

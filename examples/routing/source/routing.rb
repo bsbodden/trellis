@@ -32,7 +32,7 @@ module Routing
     end
 
     template do
-      html {
+      thtml {
         body {
           h2 {
             text %[Date <trellis:value name="page.parse_date"/>]

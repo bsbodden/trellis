@@ -78,14 +78,14 @@ module TestComponents
   end
 
   class PageWithSimpleComponent < Trellis::Page
-    template do html { body { text %[<trellis:simple_component/>] }} end
+    template do thtml { body { text %[<trellis:simple_component/>] }} end
   end
 
   class PageWithStatefulComponent < Trellis::Page
     route '/counters'
 
     template do
-      html {
+      thtml {
         body {
           text %[
                  <trellis:counter tid="one" />
@@ -101,7 +101,7 @@ module TestComponents
 
   class PageWithContributions < Trellis::Page
     template do
-      html {
+      thtml {
         head {
           title "counters"
         }

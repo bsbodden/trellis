@@ -36,7 +36,8 @@ module GuestBookApp
     template(%[
 !!! XML
 !!! Strict
-%html{ :xmlns => "http://www.w3.org/1999/xhtml" }
+%html{ :xmlns => "http://www.w3.org/1999/xhtml",
+       "xmlns:trellis" => "http://trellisframework.org/schema/trellis_1_0_0.xsd" }
   %head
     %title
       Trellis Guest Book

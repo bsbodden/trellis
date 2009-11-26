@@ -28,6 +28,32 @@ module TestApp
     end
   end
   
+  class PageWithGetPlainText < Trellis::Page
+    pages :other
+    
+    def get
+      "some content"
+    end
+  end
+  
+  class PageWithGetRedirect < Trellis::Page
+    pages :other
+    
+    def get
+      @other
+    end
+  end
+  
+  class PageWithGetSame < Trellis::Page
+    pages :other
+    
+    def get
+      self
+    end
+    
+    template do html { body { p "Vera, what has become of you?" }} end
+  end
+  
   class Other < Trellis::Page    
     template do html { body { p "Goodbye Cruel World " }} end
   end
@@ -39,7 +65,7 @@ module TestApp
       @some_value = "8675309"
     end
     
-    template do html { body { text %[<trellis:value name="some_value"/>] }} end
+    template do thtml { body { text %[<trellis:value name="some_value"/>] }} end
   end
   
   class AfterLoad < Trellis::Page
@@ -49,7 +75,7 @@ module TestApp
       @some_value = "chunky bacon!"
     end
     
-    template do html { body { text %[<trellis:value name="some_value"/>] }} end
+    template do thtml { body { text %[<trellis:value name="some_value"/>] }} end
   end
 
   class RoutedDifferently < Trellis::Page
@@ -62,7 +88,7 @@ module TestApp
     route '/hello/:name'
 
     template do 
-      html { 
+      thtml { 
         body { 
           h2 "Hello"
           text %[<trellis:value name="salutation"/><trellis:value name="name"/>]
@@ -75,7 +101,7 @@ module TestApp
     route '/report/:year/:month/:day'
 
     template do
-      html {
+      thtml {
         body {
           h2 "Report for"
           text %[<trellis:value name="month"/>]
@@ -92,7 +118,7 @@ module TestApp
     route '/foobar/?:foo?/?:bar?'
 
     template do
-      html {
+      thtml {
         body {
           text %[<trellis:value name="foo"/>]
           text '-'
@@ -106,7 +132,7 @@ module TestApp
     route '/splat/*'
 
     template do
-      html {
+      thtml {
         body {
           text %[<trellis:value name="splat"/>]
         }
@@ -118,7 +144,7 @@ module TestApp
     route '/splats/*/foo/*/*'
 
     template do
-      html {
+      thtml {
         body {
           text %[<trellis:value name="splat"/>]
         }
@@ -130,7 +156,7 @@ module TestApp
     route '/mixed/:foo/*'
 
     template do
-      html {
+      thtml {
         body {
           text %[<trellis:value name="splat"/>]
           text '-'
@@ -144,7 +170,7 @@ module TestApp
     route '/foobar/:foo/:bar'
 
     template do
-      html {
+      thtml {
         body {
           text %[<trellis:value name="foo"/>]
           text '-'
@@ -158,7 +184,7 @@ module TestApp
     route '/downloads/:file.:ext'
 
     template do
-      html {
+      thtml {
         body {
           text %[<trellis:value name="file"/>]
           text '-'
@@ -170,11 +196,11 @@ module TestApp
 
   class SamplePage < Trellis::Page
     attr_accessor :value
-    template do html { body { text %[<trellis:value name="value"/>] }} end
+    template do thtml { body { text %[<trellis:value name="value"/>] }} end
   end
 
   class AnotherSamplePage < Trellis::Page
-    template do html { body { text %[<trellis:value name="page_name"/>] }} end
+    template do thtml { body { text %[<trellis:value name="page_name"/>] }} end
   end
 
   class HamlPage < Trellis::Page

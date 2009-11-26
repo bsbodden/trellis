@@ -17,7 +17,7 @@ module Simplest
     end
     
     template do # using Markaby
-      xhtml_strict { 
+      thtml { 
         head { title "Simplest Trellis Application" }
         body { 
           h1 "Simplest Trellis Application" 

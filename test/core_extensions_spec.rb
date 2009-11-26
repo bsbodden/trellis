@@ -123,32 +123,54 @@ end
 
 describe Class do
 
-  it "when calling class_attr_accessor should add class attribute accessors for each symbol passed" do
+  it "should add class attribute accessors for each symbol passed when calling class_attr_accessor" do
     class Foo; end
     Foo.class_attr_accessor(:bar)
     Foo.should respond_to(:bar)
     Foo.should respond_to(:bar=)
   end
 
-  it "when calling class_attr_reader should add class attribute readers for each symbol passed" do
+  it "should add class attribute readers for each symbol passed when calling class_attr_reader" do
     class Bar; end
     Bar.class_attr_reader(:foo)
     Bar.should respond_to(:foo)
     Bar.should_not respond_to(:foo=)
   end
 
-  it "when calling class_attr_writer should add class attribute readers for each symbol passed" do
+  it "should add class attribute readers for each symbol passed when calling class_attr_writer" do
     class FooBar; end
     FooBar.class_attr_writer(:bar)
     FooBar.should_not respond_to(:bar)
     FooBar.should respond_to(:bar=)
   end
 
-  it "when calling instance_attr_accessor should add instance attribute accessors for each symbol passed" do
+  it "should add instance attribute accessors for each symbol passed when calling instance_attr_accessor" do
     class Snafu; end
     Snafu.instance_attr_accessor(:bar)
     instance = Snafu.new
     instance.should respond_to(:bar)
     instance.should respond_to(:bar=)
+  end
+  
+end
+
+describe Object do
+  before do
+    class Ini
+      def mini
+        "myni"
+      end
+    end  
+    @instance = Ini.new
+  end
+  
+  it "should invoke a method if available when calling call_if_provided" do
+    @instance.should respond_to(:call_if_provided)
+    @instance.call_if_provided(:mini).should eql("myni")
+  end
+  
+  it "should not invoke a method if not available when calling call_if_provided" do
+    @instance.should respond_to(:call_if_provided)
+    @instance.call_if_provided(:moe).should be_nil
   end
 end

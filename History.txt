@@ -1,3 +1,9 @@
+== 0.0.7
+* 3 major enhancement:
+  * implemented page get method to override default page rendering
+  * added trellis namespace xmlns method for markaby (to prevent rexml from freaking out)
+  * clean all examples to add trellis namespace
+
 == 0.0.6
 * 2 major enhancement:
   * added dup.call for thread safety

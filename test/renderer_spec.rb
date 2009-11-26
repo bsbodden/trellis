@@ -17,14 +17,14 @@ describe Trellis::Renderer do
     page.value = "chunky bacon"
     renderer = Trellis::Renderer.new(page)
     result = renderer.render
-    result.should == "<html><body>chunky bacon</body></html>"
+    result.should == "#{THTML_TAG}<body>chunky bacon</body></html>"
   end
 
   it "should have access to the page name" do
     page = TestApp::AnotherSamplePage.new
     renderer = Trellis::Renderer.new(page)
     result = renderer.render
-    result.should == "<html><body>TestApp::AnotherSamplePage</body></html>"
+    result.should == "#{THTML_TAG}<body>TestApp::AnotherSamplePage</body></html>"
   end
 
 end

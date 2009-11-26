@@ -64,7 +64,7 @@ module Flickr
   
   class Home < Page
     template do 
-      xhtml_strict {
+      thtml {
         head {
           title "Trellis Flickr Component Test"
         }

@@ -166,9 +166,22 @@ module Trellis
           response.headers["Location"] = "#{request.script_name}/#{path}"
           Application.logger.debug "redirecting to ==> #{request.script_name}/#{path}"
         else
-          # for render requests simply render the page
-          response.body = result.kind_of?(Trellis::Page) ? result.render : result
-          response.status = 200
+          if result.kind_of?(Trellis::Page) && result.respond_to?(:get)
+            get = result.get
+            if (get.class == result.class) || !get.kind_of?(Trellis::Page)
+              response.body = get.kind_of?(Trellis::Page) ? get.render : get
+              response.status = 200
+            else
+              path = get.path ? get.path.gsub(/\/events\/.*/, '') : get.class.class_to_sym
+              response.status = 302
+              response.headers["Location"] = "#{request.script_name}/#{path}"
+              Application.logger.debug "redirecting to ==> #{request.script_name}/#{path}"              
+            end
+          else
+            # for render requests simply render the page
+            response.body = result.kind_of?(Trellis::Page) ? result.render : result
+            response.status = 200
+          end
         end
       else
         response.status = 404
@@ -498,7 +511,7 @@ module Trellis
             end
 
             template do
-              xhtml_strict {
+              thtml {
                 head { title "Stand-in Page" }
                 body { h1 { text %[Stand-in Page for <trellis:value name="page_name"/>] }}
               }
@@ -652,6 +665,12 @@ module Trellis
           @context.globals.send(sym, value)
           @eruby_context["#{var}".split('@').last] = value if @eruby_context
         end
+      end
+      
+      # add all constants in the page as values accessible from the tags
+      page.class.constants.each do |const|
+        @context.globals.send(:const_set, const)
+        @eruby_context[const] = const if @eruby_context        
       end
 
       # add other useful values to the tag context

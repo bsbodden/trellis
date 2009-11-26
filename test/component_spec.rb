@@ -13,7 +13,7 @@ describe Trellis::Component, " in an application" do
 
   it "should return its intended content" do
     get '/'
-    last_response.body.should eql('<html><body>hello from simple component</body></html>')
+    last_response.body.should eql("#{THTML_TAG}<body>hello from simple component</body></html>")
   end
 
   it "should render each instance of a component in the template" do

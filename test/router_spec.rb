@@ -1,5 +1,7 @@
 require File.dirname(__FILE__) + '/spec_helper.rb'
 
+require_fixtures 'application_spec_applications'
+
 describe Trellis::Router, " when constructed" do
 
   it "with a page parameter should route to that page " do
