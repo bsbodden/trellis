@@ -1,9 +1,17 @@
 module TestApp
   class MyApp < Trellis::Application
     home :home
+    persistent :my_field
     
     map_static ['/images', '/style', '/favicon.ico']
     map_static ['/jquery'], "./js"
+    
+    MY_CONSTANT_1 = "it's just us, chickens!"
+    
+    def application_method
+      "Zaphod Beeblebrox"
+    end
+    
   end
 
   class Home < Trellis::Page 
@@ -76,6 +84,25 @@ module TestApp
     end
     
     template do thtml { body { text %[<trellis:value name="some_value"/>] }} end
+  end
+  
+  class BeforeRender < Trellis::Page
+    attr_reader :some_value
+    
+    def before_render
+      @some_value = "8675309"
+    end
+    
+    template do thtml { body { text %[<trellis:value name="some_value"/>] }} end
+  end
+  
+  class AfterRender < Trellis::Page
+    
+    def after_render
+      @application.my_field = "changed in after_render method"
+    end
+    
+    template do thtml { body { p { "hey!"} }} end
   end
 
   class RoutedDifferently < Trellis::Page
@@ -239,6 +266,36 @@ module TestApp
     end
     
     template %[<html><body><ul><?rb for item in @list ?><li>@{item}@</li><?rb end ?></ul></body></html>], :format => :eruby
+  end
+  
+  class ConstantAccessPage < Trellis::Page  
+    def greet
+      "helloooo, la la la"
+    end
+     
+    template %[<html><body><p>@{TestApp::MyApp::MY_CONSTANT_1}@</p></body></html>], :format => :eruby
+  end  
+  
+  class MethodAccessPage < Trellis::Page  
+    def greet
+      "helloooo, la la la"
+    end
+     
+    template %[<html><body><p>@{greet}@</p></body></html>], :format => :eruby
+  end
+  
+  class ApplicationDataPage < Trellis::Page  
+    
+    def on_save
+      @application.my_field = "here's a value"
+      self
+    end
+     
+    template %[<html><body><p>@{@application.my_field}@</p></body></html>], :format => :eruby
+  end
+  
+  class ApplicationMethodPage < Trellis::Page
+    template %[<html><body><p>@{application_method()}@</p></body></html>], :format => :eruby    
   end
 
 end

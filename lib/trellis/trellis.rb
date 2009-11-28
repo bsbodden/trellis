@@ -55,6 +55,7 @@ module Trellis
     # holding homepage, dependent pages, static resource routing paths
     def self.inherited(child) #:nodoc:
       child.class_attr_reader(:homepage)
+      child.attr_array(:persistents)
       child.class_attr_reader(:session_config)
       child.attr_array(:static_routes)
       child.meta_def(:logger) { Application.logger }
@@ -77,10 +78,17 @@ module Trellis
       @static_routes << {:urls => urls, :root => root}
     end  
     
+    # application-wide persistent fields
+    def self.persistent(*fields)
+      instance_attr_accessor fields
+      @persistents = @persistents | fields    
+    end
+    
     # bootstrap the application
     def start(port = 3000)
       Application.logger.info "Starting Trellis Application #{self.class} on port #{port}"
 
+      # only in development mode
       directory_watcher = configure_directory_watcher
       directory_watcher.start
 
@@ -99,7 +107,7 @@ module Trellis
       # configure rack middleware
       application = Rack::ShowStatus.new(self)
       application = Rack::ShowExceptions.new(application)
-      application = Rack::Reloader.new(application)
+      application = Rack::Reloader.new(application) # only in development mode
       application = Rack::CommonLogger.new(application, Application.logger)
       
       # configure rack session
@@ -145,6 +153,9 @@ module Trellis
       
       page = route.destination.new if route.destination
       if page
+        load_persistent_fields_data(session)
+        page.application = self
+        
         page.class.url_root = request.script_name
         page.path = request.path_info.sub(/^\//, '')
         page.inject_dependent_pages
@@ -186,10 +197,28 @@ module Trellis
       else
         response.status = 404
       end
+      save_persistent_fields_data(session)
       response.finish
     end
 
     private
+    
+    def load_persistent_fields_data(session)
+      self.class.persistents.each do |persistent_field|
+        field = "@#{persistent_field}".to_sym
+        current_value = instance_variable_get(field)
+        new_value = session[persistent_field]
+        if current_value != new_value && new_value != nil
+          instance_variable_set(field, new_value)
+        end      
+      end      
+    end
+    
+    def save_persistent_fields_data(session)
+      self.class.persistents.each do |persistent_field|
+        session[persistent_field] = instance_variable_get("@#{persistent_field}".to_sym)
+      end       
+    end
 
     def configure_directory_watcher(directory = nil)
       # set directory watcher to reload templates
@@ -356,7 +385,7 @@ module Trellis
     @@subclasses = Hash.new
     @@template_registry = Hash.new
     
-    attr_accessor :params, :path, :logger
+    attr_accessor :application, :params, :path, :logger
     
     def self.inherited(child) #:nodoc:
       sym = child.class_to_sym
@@ -651,11 +680,13 @@ module Trellis
   class Renderer
     include Radius  
     
+    SKIP_METHODS = ['before_load', 'after_load', 'before_render', 'after_render', 'get']
+    
     def initialize(page)
       @page = page
       @context = Context.new
       # context for erubis templates
-      @eruby_context = {} if @page.class.format == :eruby
+      @eruby_context = Erubis::Context.new if @page.class.format == :eruby
       
       # add all instance variables in the page as values accesible from the tags
       page.instance_variables.each do |var|
@@ -666,18 +697,33 @@ module Trellis
           @eruby_context["#{var}".split('@').last] = value if @eruby_context
         end
       end
-      
-      # add all constants in the page as values accessible from the tags
-      page.class.constants.each do |const|
-        @context.globals.send(:const_set, const)
-        @eruby_context[const] = const if @eruby_context        
-      end
 
       # add other useful values to the tag context
       @context.globals.send(:page_name=, page.class.to_s)
       @eruby_context[:page_name] = page.class.to_s if @eruby_context
 
-      #TODO add public page methods to the context
+      # add public page methods to the context
+      page.public_methods(false).each do |method_name|
+        # skip method handlers and the 'get' method
+        unless method_name.starts_with?('on_') || SKIP_METHODS.include?(method_name)
+          @eruby_context.meta_def(method_name) do |*args|
+            page.send(method_name.to_sym, *args)
+          end if @eruby_context
+          @context.globals.meta_def(method_name) do |*args|
+            page.send(method_name.to_sym, *args)
+          end
+        end 
+      end
+      
+      # add public application methods to the context
+      page.application.public_methods(false).each do |method_name|
+        @eruby_context.meta_def(method_name) do |*args|
+          page.application.send(method_name.to_sym, *args)
+        end if @eruby_context
+        @context.globals.meta_def(method_name) do |*args|
+          page.application.send(method_name.to_sym, *args)
+        end        
+      end
 
       # add the page to the context too
       @context.globals.page = page
@@ -692,11 +738,11 @@ module Trellis
     end
     
     def render
-      unless @page.class.format == :eruby
-        @parser.parse(@page.class.parsed_template.to_html)
-      else
+      if @page.class.format == :eruby
         preprocessed = Erubis::PI::Eruby.new(@page.class.parsed_template.to_html, :trim => false).evaluate(@eruby_context)
         @parser.parse(preprocessed)
+      else
+        @parser.parse(@page.class.parsed_template.to_html)
       end
     end
     
