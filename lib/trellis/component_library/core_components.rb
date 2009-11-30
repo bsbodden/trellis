@@ -230,13 +230,25 @@ module Trellis
         on_behalf = tag.attr['on_behalf']
         method = tag.attr['method'] || 'GET'
         tag.locals.form_name = form_name
-        target_page = tag.globals.page.class.name
+        
+        
+        
+        path = (tag.globals.page.path.nil? || tag.globals.page.path.empty?) ? nil : tag.globals.page.path
+        class_name = tag.globals.page.class.name
+        target_page = path || class_name   
+        
         href = Trellis::DefaultRouter.to_uri(:url_root => url_root,
                                              :page => target_page,
                                              :event => "submit",
                                              :source => "#{(on_behalf ? on_behalf : form_name)}")
+                                             
+        attrs = tag.attr.exclude_keys('tid', 'on_behalf', 'method')
+        attrs["name"] = form_name
+        attrs["action"] = href 
+        attrs["method"] = method    
+                                          
         builder = Builder::XmlMarkup.new
-        builder.form("name" => form_name, "action" => href, "method" => method) do |form|
+        builder.form(attrs) do |form|
           form << tag.expand
         end
       end

@@ -43,6 +43,8 @@ require 'erubis'
 require 'ostruct'
 
 module Trellis
+  
+  TEMPLATE_FORMATS = [:html, :xhtml, :haml, :textile, :markdown, :eruby]
 
   # -- Application --
   # Represents a Trellis Web Application. An application can define one or more 
@@ -50,6 +52,8 @@ module Trellis
   class Application
     include Logging
     include Rack::Utils
+    
+    @@partials = Hash.new
     
     # descendant application classes get a singleton class level instances for 
     # holding homepage, dependent pages, static resource routing paths
@@ -82,6 +86,31 @@ module Trellis
     def self.persistent(*fields)
       instance_attr_accessor fields
       @persistents = @persistents | fields    
+    end
+    
+    def self.partials
+      @@partials
+    end
+    
+    def self.partial(name, body = nil, options = nil, &block)
+      format = (options[:format] if options) || :html
+      if block_given?
+        mab = Markaby::Builder.new({}, self, &block)
+        html = mab.to_s
+      else
+        case format
+        when :haml
+          html = Haml::Engine.new(body).render
+        when :textile  
+          html = RedCloth.new(body).to_html
+        when :markdown
+          html = "<html><body>#{BlueCloth.new(body).to_html}</body></html>"
+        else # assume the body is (x)html, also eruby is treated as (x)html at this point
+          html = body
+        end
+      end
+      template = Hpricot.XML(html)
+      @@partials[name] = OpenStruct.new({:name => name, :template => template, :format => format})
     end
     
     # bootstrap the application
@@ -167,9 +196,16 @@ module Trellis
         result = route.event ? page.process_event(route.event, route.value, route.source, session) : page
 
         Application.logger.debug "response is #{result} an instance of #{result.class}"
-
+        
+        # -------------------------
         # prepare the http response
-        if (request.post? || route.event) && result.kind_of?(Trellis::Page)
+        # -------------------------
+        
+        if result.kind_of?(Trellis::Redirect)
+          # redirect short circuits
+          result.apply_to(request, response)
+          Application.logger.debug "redirecting to ==> #{request.script_name}/#{result.target}"
+        elsif (request.post? || route.event) && result.kind_of?(Trellis::Page)
           # for action events of posts then use redirect after post pattern
           # remove the events path and just return to the page
           path = result.path ? result.path.gsub(/\/events\/.*/, '') : result.class.class_to_sym
@@ -177,9 +213,14 @@ module Trellis
           response.headers["Location"] = "#{request.script_name}/#{path}"
           Application.logger.debug "redirecting to ==> #{request.script_name}/#{path}"
         else
+          # handle the get method
           if result.kind_of?(Trellis::Page) && result.respond_to?(:get)
             get = result.get
-            if (get.class == result.class) || !get.kind_of?(Trellis::Page)
+            if get.kind_of?(Trellis::Redirect)
+              # redirect short circuits
+              get.apply_to(request, response)
+              Application.logger.debug "redirecting to ==> #{request.script_name}/#{get.target}"
+            elsif (get.class == result.class) || !get.kind_of?(Trellis::Page)
               response.body = get.kind_of?(Trellis::Page) ? get.render : get
               response.status = 200
             else
@@ -358,17 +399,44 @@ module Trellis
     end
 
     def self.to_uri(options={})
+      # get options
       url_root = options[:url_root]
       page = options[:page]
       event = options[:event]
       source = options[:source]
       value = options[:value]
-      destination = page.kind_of?(Trellis::Page) ? (page.path || page.class.class_to_sym) : page
-      url_root = page.kind_of?(Trellis::Page) && page.class.url_root ? "/#{page.class.url_root}" : '/' unless url_root
+      
+      destination = page
+      url_root = "/"
+      
+      if page.kind_of?(Trellis::Page)
+        destination = page.path || page.class.class_to_sym
+        root = page.class.url_root 
+        url_root = (root && !root.empty?) ? "/#{root}" : '/'
+      end
+
       source = source ? ".#{source}" : ''
       value = value ? "/#{value}" : ''
       event_info = event ? "/events/#{event}#{source}#{value}" : ''
+
       "#{url_root}#{destination}#{event_info}"
+    end
+  end
+  
+  # -- Redirect --
+  # Encapsulated an HTTP redirect (is the object returned by Page#redirect method)
+  class Redirect
+    attr_reader :target, :status 
+    
+    def initialize(target, status=nil)
+      status = 302 unless status
+      raise ArgumentError.new("#{status} is not a valid redirect status") unless status >= 300 && status < 400
+      @target, @status = target, status
+    end
+    
+    def apply_to(request, response)
+      response.status = status 
+      response["Location"] = "#{request.script_name}#{target.starts_with?('/') ? '' : '/'}#{target}"
     end
   end
   
@@ -379,9 +447,6 @@ module Trellis
   # A Trellis Page contains listener methods to respond to events trigger by 
   # components in the same page or other pages
   class Page
-
-    TEMPLATE_FORMATS = [:html, :xhtml, :haml, :textile, :markdown, :eruby]
-    
     @@subclasses = Hash.new
     @@template_registry = Hash.new
     
@@ -463,11 +528,15 @@ module Trellis
       @@subclasses
     end
     
-    def initialize # TODO this is Ugly.... should no do it in initialize since it'll require super in child classes
+    def initialize # TODO this is Ugly.... should not do it in initialize since it'll require super in child classes
       self.class.stateful_components.each do |id_component|
         id_component[1].enhance_page(self, id_component[0])
       end
       @logger = Application.logger
+    end
+    
+    def redirect(path, status=nil)
+      Redirect.new(path, status)
     end
     
     def process_event(event, value, source, session)
@@ -514,6 +583,10 @@ module Trellis
       result = Renderer.new(self).render
       call_if_provided(:after_render) 
       result      
+    end
+    
+    def render_partial(name, locals={})
+      Renderer.new(self).render_partial(name, locals)
     end
     
     # inject an instance of each of the injected pages classes as instance variables
@@ -681,6 +754,7 @@ module Trellis
     include Radius  
     
     SKIP_METHODS = ['before_load', 'after_load', 'before_render', 'after_render', 'get']
+    INCLUDE_METHODS = ['render_partial']
     
     def initialize(page)
       @page = page
@@ -704,7 +778,7 @@ module Trellis
 
       # add public page methods to the context
       page.public_methods(false).each do |method_name|
-        # skip method handlers and the 'get' method
+        # skip event handlers and the 'get' method
         unless method_name.starts_with?('on_') || SKIP_METHODS.include?(method_name)
           @eruby_context.meta_def(method_name) do |*args|
             page.send(method_name.to_sym, *args)
@@ -713,6 +787,16 @@ module Trellis
             page.send(method_name.to_sym, *args)
           end
         end 
+      end
+      
+      # add page helper methods to the context
+      INCLUDE_METHODS.each do |method_name|
+        @eruby_context.meta_def(method_name) do |*args|
+          page.send(method_name.to_sym, *args)
+        end if @eruby_context
+        @context.globals.meta_def(method_name) do |*args|
+          page.send(method_name.to_sym, *args)
+        end
       end
       
       # add public application methods to the context
@@ -743,6 +827,19 @@ module Trellis
         @parser.parse(preprocessed)
       else
         @parser.parse(@page.class.parsed_template.to_html)
+      end
+    end
+    
+    def render_partial(name, locals={})
+      partial = Application.partials[name]
+      if partial
+        if partial.format == :eruby
+          locals.each_pair { |n,v| @eruby_context[n] = v }
+          preprocessed = Erubis::PI::Eruby.new(partial.template.to_html, :trim => false).evaluate(@eruby_context)
+          @parser.parse(preprocessed)
+        else
+          @parser.parse(partial.template.to_html)
+        end        
       end
     end
     

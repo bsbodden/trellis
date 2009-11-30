@@ -52,7 +52,7 @@ describe Trellis::Page, " when created with a custom route" do
   end
 end
 
-describe Trellis::Page, " when provided with a ==get== method" do
+describe Trellis::Page, " when provided with a #get method" do
   include Rack::Test::Methods
   
   def app
@@ -150,6 +150,14 @@ describe Trellis::Page do
     env["rack.session"] = Hash.new
     get "/after_render", {}, env
     env["rack.session"][:my_field].should include("changed in after_render method")  
+  end
+  
+  it "should redirect if giving an explicit redirect" do
+    get '/explicit_redirect'
+    redirect = last_response.headers['Location']
+    redirect.should eql('/hello/Ford%20Prefect')
+    get redirect
+    last_response.body.should == "#{THTML_TAG}<body><h2>Hello</h2>Ford%20Prefect</body></html>"
   end
 end
 
