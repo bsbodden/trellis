@@ -54,6 +54,7 @@ module Trellis
     include Rack::Utils
     
     @@partials = Hash.new
+    @@layouts = Hash.new
     
     # descendant application classes get a singleton class level instances for 
     # holding homepage, dependent pages, static resource routing paths
@@ -93,24 +94,15 @@ module Trellis
     end
     
     def self.partial(name, body = nil, options = nil, &block)
-      format = (options[:format] if options) || :html
-      if block_given?
-        mab = Markaby::Builder.new({}, self, &block)
-        html = mab.to_s
-      else
-        case format
-        when :haml
-          html = Haml::Engine.new(body).render
-        when :textile  
-          html = RedCloth.new(body).to_html
-        when :markdown
-          html = "<html><body>#{BlueCloth.new(body).to_html}</body></html>"
-        else # assume the body is (x)html, also eruby is treated as (x)html at this point
-          html = body
-        end
-      end
-      template = Hpricot.XML(html)
-      @@partials[name] = OpenStruct.new({:name => name, :template => template, :format => format})
+      store_template(name, :partial, body, options, &block)
+    end
+    
+    def self.layouts
+      @@layouts
+    end
+    
+    def self.layout(name, body = nil, options = nil, &block)
+      store_template(name, :layout, body, options, &block)
     end
     
     # bootstrap the application
@@ -243,6 +235,32 @@ module Trellis
     end
 
     private
+    
+    def self.store_template(name, type, body = nil, options = nil, &block)
+      format = (options[:format] if options) || :html
+      if block_given?
+        mab = Markaby::Builder.new({}, self, &block)
+        html = mab.to_s
+      else
+        case format
+        when :haml
+          html = Haml::Engine.new(body).render
+        when :textile  
+          html = RedCloth.new(body).to_html
+        when :markdown
+          html = "<html><body>#{BlueCloth.new(body).to_html}</body></html>"
+        else # assume the body is (x)html, also eruby is treated as (x)html at this point
+          html = body
+        end
+      end
+      template = Hpricot.XML(html)
+      case type
+      when :layout
+        @@layouts[name] = OpenStruct.new({:name => name, :template => template, :format => format})
+      when :partial
+        @@partials[name] = OpenStruct.new({:name => name, :template => template, :format => format})
+      end
+    end
     
     def load_persistent_fields_data(session)
       self.class.persistents.each do |persistent_field|
@@ -464,12 +482,19 @@ module Trellis
       child.class_attr_accessor :url_root
       child.class_attr_accessor :name
       child.class_attr_accessor :router
-      child.class_attr_accessor :layout
       child.meta_def(:add_stateful_component) { |tid,clazz| @stateful_components << [tid,clazz] }
  
       locate_template child        
       super
     end  
+    
+    def self.layout(name)
+      @page_layout = name
+    end
+    
+    def self.page_layout
+      @page_layout
+    end
     
     def self.template(body = nil, options = nil, &block)
       @format = (options[:format] if options) || :html
@@ -822,12 +847,30 @@ module Trellis
     end
     
     def render
-      if @page.class.format == :eruby
-        preprocessed = Erubis::PI::Eruby.new(@page.class.parsed_template.to_html, :trim => false).evaluate(@eruby_context)
-        @parser.parse(preprocessed)
+      preprocessed = ""
+      layout_id = @page.class.page_layout
+      if layout_id
+        layout = Application.layouts[layout_id]
+        if @page.class.format == :eruby
+          body = Erubis::PI::Eruby.new(@page.class.parsed_template.to_html, :trim => false).evaluate(@eruby_context)
+          @eruby_context[:body] = body
+        else
+          body = partial.template.to_html
+          @parser.context.body = body
+        end
+        if layout.format == :eruby
+          preprocessed = Erubis::PI::Eruby.new(layout.template.to_html, :trim => false).evaluate(@eruby_context)
+        else
+          preprocessed = layout.template.to_html
+        end
       else
-        @parser.parse(@page.class.parsed_template.to_html)
+        if @page.class.format == :eruby
+          preprocessed = Erubis::PI::Eruby.new(@page.class.parsed_template.to_html, :trim => false).evaluate(@eruby_context)
+        else
+          preprocessed = @page.class.parsed_template.to_html
+        end
       end
+      @parser.parse(preprocessed)
     end
     
     def render_partial(name, locals={})

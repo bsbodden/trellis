@@ -187,6 +187,23 @@ describe Trellis::Application, " with declared partial views" do
     get "/partial_eruby_loop"
     last_response.body.should == "<html><body><ul><li>ichi</li><li>ni</li><li>san</li><li>shi</li><li>go</li><li>rokku</li><li>hichi</li><li>hachi</li><li>kyu</li><li>jyu</li></ul></body></html>"
   end
+
+end
+
+describe Trellis::Application, " with declared layout" do
+  include Rack::Test::Methods
   
+  def app
+    TestApp::MyApp.new
+  end
   
+  it "should render a page with its corresponding layout" do
+    get "/with_layout_static"
+    last_response.body.should == "<html><body><p><h3>Hello Arizona!</h3></p></body></html>"
+  end
+  
+  it "should render a page with its corresponding layout" do
+    get "/with_layout_variable"
+    last_response.body.should == "<html><body><p><h3>Hello Arizona!</h3></p></body></html>"
+  end
 end
