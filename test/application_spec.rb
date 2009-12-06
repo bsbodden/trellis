@@ -46,7 +46,7 @@ describe Trellis::Application, " when requesting the root url with a GET" do
 
   it "should reply with the home page" do
     get "/"
-    last_response.body.should == "<html><body><h1>Hello World!</h1></body></html>"
+    last_response.body.should == %[<?xml version=\"1.0\"?>\n<html>\n  <body>\n    <h1>Hello World!</h1>\n  </body>\n</html>\n]
   end
 end
 
@@ -57,45 +57,45 @@ describe Trellis::Application, " requesting a route" do
     TestApp::MyApp.new
   end
 
-  it "should return a 404 (not found)" do
+  it "should return a 404 (not found) for an unmatch request" do
     get "/blowup"
     last_response.status.should be(404)
   end
 
   it "should return the page contents of the first page matching the route" do
     get "/whoa"
-    last_response.body.should == "<html><body>whoa!</body></html>"
+    last_response.body.should == "<?xml version=\"1.0\"?>\n<html>\n  <body>whoa!</body>\n</html>\n"
   end
 
   it "should support a single named parameter" do
     get "/hello/brian"
-    last_response.body.should == "#{THTML_TAG}<body><h2>Hello</h2>brian</body></html>"
+    last_response.body.should include("<body>\n    <h2>Hello</h2>\n    \n    brian\n  </body>")
     get "/hello/anne"
-    last_response.body.should == "#{THTML_TAG}<body><h2>Hello</h2>anne</body></html>"
+    last_response.body.should include("<body>\n    <h2>Hello</h2>\n    \n    anne\n  </body>")
   end
 
   it "should support multiple named parameters" do
     get '/report/2009/05/31'
-    last_response.body.should == "#{THTML_TAG}<body><h2>Report for</h2>05/31/2009</body></html>"
+    last_response.body.should include("<body><h2>Report for</h2>05/31/2009</body>")
   end
 
   it "should support optional parameters" do
     get '/foobar/hello/world'
-    last_response.body.should == "#{THTML_TAG}<body>hello-world</body></html>"
+    last_response.body.should include("<body>hello-world</body>")
     get '/foobar/hello'
-    last_response.body.should == "#{THTML_TAG}<body>hello-</body></html>"
+    last_response.body.should include("<body>hello-</body>")
     get '/foobar'
-    last_response.body.should == "#{THTML_TAG}<body>-</body></html>"
+    last_response.body.should include("<body>-</body>")
   end
 
   it "should support a wildcard parameters" do
     get '/splat/goodbye/cruel/world'
-    last_response.body.should == "#{THTML_TAG}<body>goodbye/cruel/world</body></html>"
+    last_response.body.should include("goodbye/cruel/world")
   end
 
   it "should supports mixing multiple splats" do
     get '/splats/bar/foo/bling/baz/boom'
-    last_response.body.should == "#{THTML_TAG}<body>barblingbaz/boom</body></html>"
+    last_response.body.should include("barblingbaz/boom")
 
     get '/splats/bar/foo/baz'
     last_response.status.should be(404)
@@ -103,23 +103,32 @@ describe Trellis::Application, " requesting a route" do
 
   it "should supports mixing named and wildcard params" do
     get '/mixed/afoo/bar/baz'
-    last_response.body.should == "#{THTML_TAG}<body>bar/baz-afoo</body></html>"
+    last_response.body.should include("bar/baz-afoo")
   end
 
   it "should merge named params and query string params" do
     get "/hello/Bean?salutation=Mr.%20"
-    last_response.body.should == "#{THTML_TAG}<body><h2>Hello</h2>Mr. Bean</body></html>"
+    last_response.body.should include("<h2>Hello</h2>\n    Mr. \n    Bean")
   end
 
   it "should match a dot ('.') as part of a named param" do
     get "/foobar/user@example.com/thebar"
-    last_response.body.should == "#{THTML_TAG}<body>user@example.com-thebar</body></html>"
+    last_response.body.should include("user@example.com-thebar")
   end
 
   it "should match a literal dot ('.') outside of named params" do
     get "/downloads/logo.gif"
-    last_response.body.should == "#{THTML_TAG}<body>logo-gif</body></html>"
+    last_response.body.should include("logo-gif")
   end
+  
+  it "should redirect to a custom route when handling an event returning a custom routed page" do
+    post "/admin/login/events/submit.login"
+    redirect = last_response.headers['Location']
+    redirect.should eql('/admin/result')
+    get redirect
+    last_response.body.should include('<h1>PostRedirectPage</h1>')
+  end
+  
 end
 
 describe Trellis::Application do
@@ -131,7 +140,7 @@ describe Trellis::Application do
   
   it "should have access to any persistent fields" do
     get "/application_data_page"
-    last_response.body.should == "<html><body><p></p></body></html>"
+    last_response.body.should == "<?xml version=\"1.0\"?>\n<html>\n  <body>\n    <p></p>\n  </body>\n</html>\n"
   end
   
   it "should be able to modify any persistent fields" do
@@ -141,12 +150,12 @@ describe Trellis::Application do
     redirect = last_response.headers['Location']
     redirect.should eql('/application_data_page')
     get redirect, {}, env
-    last_response.body.should == "<html><body><p>here's a value</p></body></html>"
+    last_response.body.should == "<?xml version=\"1.0\"?>\n<html>\n  <body>\n    <p>here's a value</p>\n  </body>\n</html>\n"
   end
   
   it "should have access to any application public methods" do
     get "/application_method_page"
-    last_response.body.should == "<html><body><p>Zaphod Beeblebrox</p></body></html>"
+    last_response.body.should == "<?xml version=\"1.0\"?>\n<html>\n  <body>\n    <p>Zaphod Beeblebrox</p>\n  </body>\n</html>\n"
   end
 
 end
@@ -160,32 +169,32 @@ describe Trellis::Application, " with declared partial views" do
   
   it "should render a view defined in markaby" do
     get "/partial_markaby"
-    last_response.body.should == "<html><body><p>This content was generated by Markaby</p></body></html>"
+    last_response.body.should  include("<p>This content was generated by Markaby</p>")
   end
   
   it "should render a view defined in haml" do
     get "/partial_haml"
-    last_response.body.should == "<html><body><p>This content was generated by HAML</p>\n</body></html>"
+    last_response.body.should include("<p>This content was generated by HAML</p>")
   end
   
   it "should render a view defined in textile" do
     get "/partial_textile"
-    last_response.body.should == "<html><body><p>This content was generated by <strong>Textile</strong></p></body></html>"
+    last_response.body.should include("<p>This content was generated by <strong>Textile</strong></p>")
   end
   
   it "should render a view defined in markdown" do
     get "/partial_markdown"
-    last_response.body.should == "<html><body><html><body><h1>This content was generated by Markdown</h1></body></html></body></html>"
+    last_response.body.should include("<h1>This content was generated by Markdown</h1>")
   end
   
   it "should render a view defined in eruby" do
     get "/partial_eruby"
-    last_response.body.should == "<html><body><p>This content was generated by The Amazing ERubis</p></body></html>"
+    last_response.body.should include("<p>This content was generated by The Amazing ERubis</p>")
   end
   
   it "should render a view defined in eruby and have access to the surrounding context" do
     get "/partial_eruby_loop"
-    last_response.body.should == "<html><body><ul><li>ichi</li><li>ni</li><li>san</li><li>shi</li><li>go</li><li>rokku</li><li>hichi</li><li>hachi</li><li>kyu</li><li>jyu</li></ul></body></html>"
+    last_response.body.join.should include("<ul> <li>ichi</li> <li>ni</li> <li>san</li> <li>shi</li> <li>go</li> <li>rokku</li> <li>hichi</li> <li>hachi</li> <li>kyu</li> <li>jyu</li> </ul>")
   end
 
 end
@@ -199,11 +208,21 @@ describe Trellis::Application, " with declared layout" do
   
   it "should render a page with its corresponding layout" do
     get "/with_layout_static"
-    last_response.body.should == "<html><body><p><h3>Hello Arizona!</h3></p></body></html>"
+    last_response.body.should include("<p>\n<h3>Hello Arizona!</h3></p>")
   end
   
   it "should render a page with its corresponding layout" do
     get "/with_layout_variable"
-    last_response.body.should == "<html><body><p><h3>Hello Arizona!</h3></p></body></html>"
+    last_response.body.should include("p>\n<h3>Hello Arizona!</h3></p>")
+  end
+  
+  it "should render any embedded trellis components" do
+    get "/markaby_template_with_components"
+    last_response.body.should include("<p>Vulgar Vogons</p>")
+  end
+  
+  it "should render and eruby template and layout" do
+    get '/eruby_template_and_layout'
+    last_response.body.join.should include("<ul> <li>one</li> <li>two</li> <li>tres</li> <li>cuatro</li> </ul>")
   end
 end

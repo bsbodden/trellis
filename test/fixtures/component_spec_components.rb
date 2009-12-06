@@ -65,7 +65,7 @@ module TestComponents
     page_contribution :script, %[alert('hello just once');], :scope => :class
     
     page_contribution(:dom) {
-      at("body")['class'] = 'new_class'
+      at_css("body")['class'] = 'new_class'
     }
 
     render do |tag|

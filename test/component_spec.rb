@@ -13,7 +13,7 @@ describe Trellis::Component, " in an application" do
 
   it "should return its intended content" do
     get '/'
-    last_response.body.should eql("#{THTML_TAG}<body>hello from simple component</body></html>")
+    last_response.body.should include("hello from simple component")
   end
 
   it "should render each instance of a component in the template" do
@@ -65,17 +65,17 @@ describe Trellis::Component, " in an application" do
 
   it "should be able to provide a style link contribution to the page" do
     get '/page_with_contributions'
-    last_response.body.should include('<link href="/someplace/my_styles.css" rel="stylesheet" type="text/css" />')
+    last_response.body.should include(%[<link href=\"/someplace/my_styles.css\" rel=\"stylesheet\" type=\"text/css\"/>])
   end
 
   it "should be able to provide a script link contribution to the page" do
     get '/page_with_contributions'
-    last_response.body.should include('<script src="/someplace/my_script.js" type="text/javascript"></script>')
+    last_response.body.should include(%[<script src=\"/someplace/my_script.js\" type=\"text/javascript\"/>])
   end
 
   it "should be able to provide a style contribution to the page" do
     get '/page_with_contributions'
-    last_response.body.should include('<style type="text/css">html { color:#555555; background-color:#303030; }</style>')
+    last_response.body.should include(%[<style type="text/css">html { color:#555555; background-color:#303030; }</style>])
   end
 
   it "should be able to provide a style contribution to the page per instance" do

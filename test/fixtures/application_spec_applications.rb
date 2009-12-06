@@ -20,6 +20,7 @@ module TestApp
     partial :loop_body, %[<li>@{@i}@</li>], :format => :eruby
     
     layout :main, %[<html><body><p>@!{@body}@</p></body></html>], :format => :eruby
+    layout(:other) { thtml { body { render_body }}} 
   end
 
   class Home < Trellis::Page 
@@ -257,7 +258,7 @@ module TestApp
   end
 
   class MarkDownPage < Trellis::Page
-    template "# This is the Title\n## This is the SubTitle\nThis is some text", :format => :markdown
+    template %[# This is the Title\n## This is the SubTitle\n**This is some text**], :format => :markdown
   end
 
   class HTMLPage < Trellis::Page
@@ -352,13 +353,20 @@ module TestApp
       self
     end
     
-    template %[<html><body><ul><?rb @elements.each do |element| ?>@!{render_partial(:loop_body, {:i => element})}@<?rb end ?></ul></body></html>], :format => :eruby    
+    template %[<html>
+                 <body>
+                   <ul>
+                     <?rb @elements.each do |element| ?>
+                       @!{ render_partial(:loop_body, {:i, element}) }@
+                    <?rb end ?>
+                  </ul>
+                </body>
+              </html>], :format => :eruby    
   end
   
   class PageWithLayoutStatic < Trellis::Page
     route '/with_layout_static'
-    layout :main
-    template %[<h3>Hello Arizona!</h3>], :format => :eruby
+    template %[<h3>Hello Arizona!</h3>], :format => :eruby, :layout => :main
   end
   
   class PageWithLayoutDynamic < Trellis::Page
@@ -369,8 +377,49 @@ module TestApp
       self
     end
     
-    layout :main
-    template %[<h3>@{@my_value}@</h3>], :format => :eruby
+    template %[<h3>@{@my_value}@</h3>], :format => :eruby, :layout => :main
+  end
+  
+  class MarkabyTemplateWithComponents < Trellis::Page
+    attr_reader :some_value
+    
+    def get
+      @some_value = "Vulgar Vogons"
+      self
+    end
+    
+    template(nil, :layout => :other) do p { text %[<trellis:value name="some_value"/>] } end
+  end
+  
+  class ErubyTemplateAndLayout < Trellis::Page 
+    def get
+      @elements = ['one', 'two', 'tres', 'cuatro']
+      self
+    end
+    
+    template %[
+      <ul>
+        <?rb @elements.each do |element| ?>
+          @!{ render_partial(:loop_body, {:i, element}) }@
+        <?rb end ?>
+      </ul>
+    ], :format => :eruby, :layout => :main
+  end
+  
+  class PostOriginPage < Trellis::Page
+    route '/admin/login'
+    pages :post_redirect_page
+  
+    def on_submit_from_login
+      redirect '/admin/result'
+    end
+    
+    template %[<html><body><h1>PostOriginPage</h1></body></html>]
+  end
+  
+  class PostRedirectPage < Trellis::Page
+    route '/admin/result'
+    template %[<html><body><h1>PostRedirectPage</h1></body></html>]
   end
 
 end

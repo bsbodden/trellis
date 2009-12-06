@@ -230,8 +230,11 @@ module Trellis
         on_behalf = tag.attr['on_behalf']
         method = tag.attr['method'] || 'GET'
         tag.locals.form_name = form_name
+        value = tag.attr['value']
         
-        
+        if value
+          eval_value = tag.locals.instance_eval(value) || tag.globals.instance_eval(value)
+        end
         
         path = (tag.globals.page.path.nil? || tag.globals.page.path.empty?) ? nil : tag.globals.page.path
         class_name = tag.globals.page.class.name
@@ -240,7 +243,8 @@ module Trellis
         href = Trellis::DefaultRouter.to_uri(:url_root => url_root,
                                              :page => target_page,
                                              :event => "submit",
-                                             :source => "#{(on_behalf ? on_behalf : form_name)}")
+                                             :source => "#{(on_behalf ? on_behalf : form_name)}",
+                                             :value => eval_value)
                                              
         attrs = tag.attr.exclude_keys('tid', 'on_behalf', 'method')
         attrs["name"] = form_name

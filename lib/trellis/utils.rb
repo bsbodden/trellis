@@ -237,11 +237,16 @@ module Utils
     end
     result
   end  
-  
 end
 
 module Markaby
+  
+  def self.build(*args, &block)
+    Markaby::Builder.new(*args, &block).to_s
+  end
+
   class Builder
+    
     def thtml(&block)
       tag!(:html,
            :xmlns => "http://www.w3.org/1999/xhtml",
@@ -249,6 +254,11 @@ module Markaby
            :lang => "en",
            "xmlns:trellis" => "http://trellisframework.org/schema/trellis_1_0_0.xsd", &block)
     end
+    
+    def render_body
+      text %[@!{@body}@]
+    end
+
   end
 end
 

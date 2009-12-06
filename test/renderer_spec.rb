@@ -9,7 +9,7 @@ describe Trellis::Renderer do
     page = TestApp::Home.new
     renderer = Trellis::Renderer.new(page)
     result = renderer.render
-    result.should == "<html><body><h1>Hello World!</h1></body></html>"
+    result.should == "<?xml version=\"1.0\"?>\n<html>\n  <body>\n    <h1>Hello World!</h1>\n  </body>\n</html>\n"
   end
 
   it "should have access to page instance variables" do
@@ -17,14 +17,14 @@ describe Trellis::Renderer do
     page.value = "chunky bacon"
     renderer = Trellis::Renderer.new(page)
     result = renderer.render
-    result.should == "#{THTML_TAG}<body>chunky bacon</body></html>"
+    result.should include("<body>\n    chunky bacon\n  </body>")
   end
 
   it "should have access to the page name" do
     page = TestApp::AnotherSamplePage.new
     renderer = Trellis::Renderer.new(page)
     result = renderer.render
-    result.should == "#{THTML_TAG}<body>TestApp::AnotherSamplePage</body></html>"
+    result.should include("<body>\n    TestApp::AnotherSamplePage\n  </body>")
   end
 
 end

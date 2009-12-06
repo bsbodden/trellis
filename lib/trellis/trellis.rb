@@ -30,8 +30,7 @@ require 'rubygems'
 require 'rack'
 require 'radius'
 require 'builder'
-require 'hpricot'
-require 'rexml/document'
+require 'nokogiri'
 require 'extensions/string'
 require 'haml'
 require 'markaby'
@@ -52,6 +51,7 @@ module Trellis
   class Application
     include Logging
     include Rack::Utils
+    include Nokogiri::XML
     
     @@partials = Hash.new
     @@layouts = Hash.new
@@ -155,7 +155,7 @@ module Trellis
       match ? match.router : DefaultRouter.new(:application => self)
     end
     
-    # Rack call interface.
+    # rack call interface.
     def call(env)
       dup.call!(env)
     end
@@ -248,17 +248,27 @@ module Trellis
         when :textile  
           html = RedCloth.new(body).to_html
         when :markdown
-          html = "<html><body>#{BlueCloth.new(body).to_html}</body></html>"
+          if type == :partial
+            html = BlueCloth.new(body).to_html
+          else 
+            html = Markaby.build { thtml { body { text "#{BlueCloth.new(body).to_html}" } }}
+          end
         else # assume the body is (x)html, also eruby is treated as (x)html at this point
           html = body
         end
       end
-      template = Hpricot.XML(html)
+      template = Nokogiri::XML(html)
       case type
       when :layout
-        @@layouts[name] = OpenStruct.new({:name => name, :template => template, :format => format})
+        @@layouts[name] = OpenStruct.new({:name => name, 
+                                          :template => template, 
+                                          :to_xml => template.to_xml, 
+                                          :format => format})
       when :partial
-        @@partials[name] = OpenStruct.new({:name => name, :template => template, :format => format})
+        @@partials[name] = OpenStruct.new({:name => name, 
+                                           :template => template, 
+                                           :to_xml => template.to_xml(:save_with => Node::SaveOptions::NO_DECLARATION), 
+                                           :format => format})
       end
     end
     
@@ -442,7 +452,7 @@ module Trellis
   end
   
   # -- Redirect --
-  # Encapsulated an HTTP redirect (is the object returned by Page#redirect method)
+  # Encapsulates an HTTP redirect (is the object returned by Page#redirect method)
   class Redirect
     attr_reader :target, :status 
     
@@ -465,6 +475,8 @@ module Trellis
   # A Trellis Page contains listener methods to respond to events trigger by 
   # components in the same page or other pages
   class Page
+    include Nokogiri::XML
+    
     @@subclasses = Hash.new
     @@template_registry = Hash.new
     
@@ -488,16 +500,13 @@ module Trellis
       super
     end  
     
-    def self.layout(name)
-      @page_layout = name
-    end
-    
-    def self.page_layout
-      @page_layout
+    def self.layout
+      @layout
     end
     
     def self.template(body = nil, options = nil, &block)
       @format = (options[:format] if options) || :html
+      @layout = (options[:layout] if options)
       if block_given?
         mab = Markaby::Builder.new({}, self, &block)
         html = mab.to_s
@@ -508,16 +517,27 @@ module Trellis
         when :textile  
           html = RedCloth.new(body).to_html
         when :markdown
-          html = "<html><body>#{BlueCloth.new(body).to_html}</body></html>"
+          if @layout
+            html = BlueCloth.new(body).to_html
+          else
+            html = Markaby.build { thtml { body { text "#{BlueCloth.new(body).to_html}" } }}
+          end
         else # assume the body is (x)html, also eruby is treated as (x)html at this point
           html = body
         end
       end
-      @template = Hpricot.XML(html)
+      
+      # hack to prevent nokogiri form stripping namespace prefix on xml fragments
+      if @layout 
+        html = %[<div id="trellis_remove" xmlns:trellis="http://trellisframework.org/schema/trellis_1_0_0.xsd">#{html}</div>]
+      end
+      
+      @template = Nokogiri::XML(html)
+
       find_components
     end
     
-    def self.parsed_template
+    def self.dom
       # try to reload the template if it wasn't found on during inherited
       # since it could have failed if the app was not mounted as root
       unless @template
@@ -525,6 +545,10 @@ module Trellis
         locate_template(self)
       end 
       @template
+    end
+    
+    def self.to_xml(options = {})
+      options[:no_declaration] ? dom.to_xml(:save_with => Node::SaveOptions::NO_DECLARATION) : dom.to_xml
     end
     
     def self.format
@@ -567,12 +591,8 @@ module Trellis
     def process_event(event, value, source, session)
       method = source ? "on_#{event}_from_#{source}" : "on_#{event}"
 
-      # execute the method passing the value if necessary 
-      unless value
-        method_result = send method.to_sym
-      else
-        method_result = send method.to_sym, Rack::Utils.unescape(value)
-      end
+      # execute the method passing the value if necessary
+      method_result = value ? send(method.to_sym, Rack::Utils.unescape(value)) : send(method.to_sym)
 
       # determine navigation flow based on the return value of the method call
       if method_result
@@ -690,9 +710,8 @@ module Trellis
     def self.find_components
       @components.clear
       classes_processed = []
-      doc = REXML::Document.new(@template.to_html)
       # look for component declarations in the template
-      doc.elements.each('//trellis:*') do |element|
+      @template.xpath("//trellis:*", 'trellis' => "http://trellisframework.org/schema/trellis_1_0_0.xsd").each do |element|
         # retrieve the component class
         component = Component.get_component(element.name.to_sym)
         # for components that are contained in other components
@@ -701,13 +720,13 @@ module Trellis
           parent = nil
           # loop over all the container types until we find the matching parent
           component.containers.each do |container|
-            parent = REXML::XPath.first(element, "ancestor::trellis:#{container}")
+            parent = element.xpath("ancestor::trellis:#{container}", 'trellis' => "http://trellisframework.org/schema/trellis_1_0_0.xsd").first
             break if parent
           end
-          element.attributes['parent_tid'] = parent.attributes['tid'] if parent
+          element['parent_tid'] = parent['tid'] if parent
         end
         
-        tid = element.attributes['tid']
+        tid = element['tid']
         unless component
           Application.logger.info "could not find #{element.name} in component hash"
         else
@@ -785,7 +804,7 @@ module Trellis
       @page = page
       @context = Context.new
       # context for erubis templates
-      @eruby_context = Erubis::Context.new if @page.class.format == :eruby
+      @eruby_context = Erubis::Context.new #if @page.class.format == :eruby
       
       # add all instance variables in the page as values accesible from the tags
       page.instance_variables.each do |var|
@@ -793,13 +812,13 @@ module Trellis
         unless value.kind_of?(Trellis::Page)
           sym = "#{var}=".split('@').last.to_sym
           @context.globals.send(sym, value)
-          @eruby_context["#{var}".split('@').last] = value if @eruby_context
+          @eruby_context["#{var}".split('@').last] = value #if @eruby_context
         end
       end
 
       # add other useful values to the tag context
       @context.globals.send(:page_name=, page.class.to_s)
-      @eruby_context[:page_name] = page.class.to_s if @eruby_context
+      @eruby_context[:page_name] = page.class.to_s #if @eruby_context
 
       # add public page methods to the context
       page.public_methods(false).each do |method_name|
@@ -807,7 +826,7 @@ module Trellis
         unless method_name.starts_with?('on_') || SKIP_METHODS.include?(method_name)
           @eruby_context.meta_def(method_name) do |*args|
             page.send(method_name.to_sym, *args)
-          end if @eruby_context
+          end #if @eruby_context
           @context.globals.meta_def(method_name) do |*args|
             page.send(method_name.to_sym, *args)
           end
@@ -818,7 +837,7 @@ module Trellis
       INCLUDE_METHODS.each do |method_name|
         @eruby_context.meta_def(method_name) do |*args|
           page.send(method_name.to_sym, *args)
-        end if @eruby_context
+        end #if @eruby_context
         @context.globals.meta_def(method_name) do |*args|
           page.send(method_name.to_sym, *args)
         end
@@ -828,7 +847,7 @@ module Trellis
       page.application.public_methods(false).each do |method_name|
         @eruby_context.meta_def(method_name) do |*args|
           page.application.send(method_name.to_sym, *args)
-        end if @eruby_context
+        end #if @eruby_context
         @context.globals.meta_def(method_name) do |*args|
           page.application.send(method_name.to_sym, *args)
         end        
@@ -836,7 +855,7 @@ module Trellis
 
       # add the page to the context too
       @context.globals.page = page
-      @eruby_context[:page] = page if @eruby_context
+      @eruby_context[:page] = page #if @eruby_context
       
       # register the components contained in the page with the renderer's context
       page.class.components.each do |component|
@@ -848,28 +867,40 @@ module Trellis
     
     def render
       preprocessed = ""
-      layout_id = @page.class.page_layout
+      layout_id = @page.class.layout
+      template = layout_id ? @page.class.to_xml(:no_declaration => true) : @page.class.to_xml
+
       if layout_id
+        # page has a layout 
+        # retrieve the layout from the application
         layout = Application.layouts[layout_id]
+        # render the page template to a variable
         if @page.class.format == :eruby
-          body = Erubis::PI::Eruby.new(@page.class.parsed_template.to_html, :trim => false).evaluate(@eruby_context)
+          body = Erubis::PI::Eruby.new(template, :trim => false).evaluate(@eruby_context)
           @eruby_context[:body] = body
         else
-          body = partial.template.to_html
-          @parser.context.body = body
+          @eruby_context[:body] = template
         end
-        if layout.format == :eruby
-          preprocessed = Erubis::PI::Eruby.new(layout.template.to_html, :trim => false).evaluate(@eruby_context)
-        else
-          preprocessed = layout.template.to_html
-        end
+        
+        # render the layout around the page template
+        preprocessed = Erubis::PI::Eruby.new(layout.to_xml, :trim => false).evaluate(@eruby_context)
+        
+        # clean up nokogiri namespace hack, see Page#template
+        doc = Nokogiri::XML(preprocessed)
+        to_be_removed = doc.at_css(%[div[id="trellis_remove"]])
+        parent = to_be_removed.parent
+        to_be_removed.children.each { |child| child.parent = parent }
+        to_be_removed.remove
+        preprocessed = doc.to_xml
       else
+        # page has no layout
         if @page.class.format == :eruby
-          preprocessed = Erubis::PI::Eruby.new(@page.class.parsed_template.to_html, :trim => false).evaluate(@eruby_context)
+          preprocessed = Erubis::PI::Eruby.new(template, :trim => false).evaluate(@eruby_context)
         else
-          preprocessed = @page.class.parsed_template.to_html
+          preprocessed = template
         end
       end
+      # radius parsing
       @parser.parse(preprocessed)
     end
     
@@ -878,10 +909,10 @@ module Trellis
       if partial
         if partial.format == :eruby
           locals.each_pair { |n,v| @eruby_context[n] = v }
-          preprocessed = Erubis::PI::Eruby.new(partial.template.to_html, :trim => false).evaluate(@eruby_context)
+          preprocessed = Erubis::PI::Eruby.new(partial.to_xml, :trim => false).evaluate(@eruby_context)
           @parser.parse(preprocessed)
         else
-          @parser.parse(partial.template.to_html)
+          @parser.parse(partial.to_xml)
         end        
       end
     end
@@ -967,7 +998,7 @@ module Trellis
         href = href.replace_ant_style_properties(attributes) if attributes
         builder = Builder::XmlMarkup.new
         link = builder.link(:rel => "stylesheet", :type => "text/css", :href => href)
-        page.parsed_template.at("html/head").containers.last.after("\n#{link}")
+        page.dom.at_css("html/head").children.last.after("\n#{link}")
       end
     end
     
@@ -976,7 +1007,7 @@ module Trellis
         src = src.replace_ant_style_properties(attributes) if attributes
         builder = Builder::XmlMarkup.new
         script = builder.script('', :type => "text/javascript", :src => src)
-        page.parsed_template.at("html/head").containers.last.after("\n#{script}")
+        page.dom.at_css("html/head").children.last.after("\n#{script}")
       end      
     end
     
@@ -987,7 +1018,7 @@ module Trellis
         style = builder.style(:type => "text/css") do |builder|
           builder << body
         end
-        page.parsed_template.at("html/head").containers.last.after("\n#{style}")
+        page.dom.at_css("html/head").children.last.after("\n#{style}")
       end      
     end
     
@@ -998,7 +1029,7 @@ module Trellis
         script = builder.script(:type => "text/javascript") do |builder|
           builder << body
         end
-        page.parsed_template.at("html/body").containers.last.after("\n#{script}")
+        page.dom.at_css("html/body").children.last.after("\n#{script}")
       end      
     end
     
@@ -1009,7 +1040,7 @@ module Trellis
         style = builder.style(:type => "text/css") do |builder|
           builder << body
         end
-        page.parsed_template.at("html/head").containers.last.after("\n#{style}")
+        page.dom.at_css("html/head").children.last.after("\n#{style}")
       end      
     end
     
@@ -1020,13 +1051,13 @@ module Trellis
         script = builder.script(:type => "text/javascript") do |builder|
           builder << body
         end
-        page.parsed_template.at("html/body").containers.last.after("\n#{script}")
+        page.dom.at_css("html/body").children.last.after("\n#{script}")
       end      
     end
     
     def self.add_document_modifications_to_page(page)
       document_modifications.each do |block| 
-        page.parsed_template.instance_eval(&block)
+        page.dom.instance_eval(&block)
       end
     end
 

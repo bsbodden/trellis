@@ -72,7 +72,7 @@ describe Trellis::Page, " when provided with a #get method" do
   
   it "should render the result of the ==get== method if it is the same page" do
     get "/page_with_get_same" 
-    last_response.body.should == "<html><body><p>Vera, what has become of you?</p></body></html>"
+    last_response.body.should include("<p>Vera, what has become of you?</p>")
   end
 end
 
@@ -85,27 +85,30 @@ describe Trellis::Page, " when given a template" do
 
   it "should rendered it correctly if it is in HAML format" do
     get "/haml_page" 
-    last_response.body.should == "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n  <head>\n    <meta content=\"text/html; charset=UTF-8\" http-equiv=\"Content-Type\" />\n    <title>\n      This is a HAML page\n    </title>\n  </head>\n  <body>\n    <h1>\n      Page Title\n    </h1>\n    <p>\n      HAML rocks!\n    </p>\n  </body>\n</html>\n"
+    last_response.body.should include(%[<title>\n      This is a HAML page\n    </title>\n  </head>\n  <body>\n    <h1>\n      Page Title\n    </h1>\n    <p>\n      HAML rocks!\n    </p>])
   end
 
   it "should rendered it correctly if it is in Textile format" do
     get "/textile_page"
-    last_response.body.should == "<p>A <strong>simple</strong> example.</p>"
+    last_response.body.should == "<?xml version=\"1.0\"?>\n<p>A <strong>simple</strong> example.</p>\n"
   end
 
   it "should rendered it correctly if it is in Markdown format" do
     get "/mark_down_page"
-    last_response.body.should == "<html><body><h1>This is the Title</h1>\n\n<h2>This is the SubTitle</h2>\n\n<p>This is some text</p></body></html>"
+    last_response.body.should include(%[body><h1>This is the Title</h1>\n\n<h2>This is the SubTitle</h2>\n\n<p><strong>This is some text</strong>])
   end
   
   it "should rendered it correctly if it is in ERuby format" do
     get "/e_ruby_page" 
-    last_response.body.should == "<html><body><ul><li>Hey</li><li>bud</li><li>let's</li><li>party!</li></ul></body></html>"
+    last_response.body.should include("<li>Hey</li>")
+    last_response.body.should include("<li>bud</li>")
+    last_response.body.should include("<li>let's</li>")
+    last_response.body.should include("<li>party!</li>")
   end  
 
   it "should rendered it correctly if it is in HTML format" do
     get "/html_page"
-    last_response.body.should == "<html><body><h1>This is just HTML</h1></body></html>"
+    last_response.body.should include("<h1>This is just HTML</h1>")
   end
 end
 
@@ -122,27 +125,27 @@ describe Trellis::Page do
   
   it "should have access to application constants in ERuby format" do
     get "/constant_access_page"
-    last_response.body.should == "<html><body><p>it's just us, chickens!</p></body></html>"
+    last_response.body.should include("<p>it's just us, chickens!</p>")
   end 
   
   it "should have access to application methods in ERuby format" do
     get "/method_access_page" 
-    last_response.body.should == "<html><body><p>helloooo, la la la</p></body></html>"
+    last_response.body.should include("<p>helloooo, la la la</p>")
   end
   
   it "should invoke the before_load method if provided by the page" do
     get "/before_load" 
-    last_response.body.should == "#{THTML_TAG}<body>8675309</body></html>"
+    last_response.body.should include("8675309")
   end
   
   it "should invoke the after_load method if provided by the page" do
     get "/after_load" 
-    last_response.body.should == "#{THTML_TAG}<body>chunky bacon!</body></html>"    
+    last_response.body.should include("chunky bacon!")  
   end
   
   it "should invoke the before_render method if provided by the page" do
     get "/before_render" 
-    last_response.body.should == "#{THTML_TAG}<body>8675309</body></html>"
+    last_response.body.should include("8675309")
   end
   
   it "should invoke the after_render method if provided by the page" do
@@ -157,7 +160,7 @@ describe Trellis::Page do
     redirect = last_response.headers['Location']
     redirect.should eql('/hello/Ford%20Prefect')
     get redirect
-    last_response.body.should == "#{THTML_TAG}<body><h2>Hello</h2>Ford%20Prefect</body></html>"
+    last_response.body.should include("<h2>Hello</h2>\n    \n    Ford%20Prefect")
   end
 end
 
