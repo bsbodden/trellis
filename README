@@ -1,8 +1,10 @@
 = Project: Trellis
 
-Trellis is a component-based Web Application Framework written in Ruby. 
-Its main goal is to bring component-driven development to the micro-framework world. 
-The framework aims to be a zero-configuration framework. 
+Trellis is a component-based Web Application Framework written in Ruby and based on Rack. 
+Its main goal is to bring component-driven development to the micro-framework world.
+Trellis applications are composed of pages, pages have components, components emit events,
+pages and components can listen and handle events. 
+Trellis aims to be a (close to) zero-configuration framework 
 
 It draws inspiration from:
 
@@ -18,7 +20,6 @@ Java Web Frameworks
 ===================
 * Tapesty
 * Wicket
-* The good parts of JSF (components)
 
 Others
 ======
@@ -26,17 +27,17 @@ Others
 
 == Goals 
 Accomplished goals are marked with a (*)
-- * Pure HTML templates or in-line template creation with Markaby or HAML
+- * Pure HTML templates or in-line template creation with Markaby, HAML, erubis, Markdown and Textile
 - * To abstract away the request-response nature of web development and replace 
   with events and listeners
 - * Reusable, extensible components including invisible components (behavior 
   providers), tags (stateless components) or stateful components
-- Easy component composition and markup inheritance
+- * Easy component composition and markup inheritance
 - * Multi-threading support 
 - * Heavy CoC :-) (Convention Over Configuration) ala Rails
 - * No static code generation, no generators, just a Ruby file!
 - * Component Libraries as Gems
-- * Solid Ajax support attached to the event model using a single* massively tested
+- Solid Ajax support attached to the event model using a single* massively tested
   Ajax framework/toolkit such as JQuery
 - Skinnable components a la DotNet. That is the ability to apply a theme to a 
   page and cascade that to the contained components
@@ -62,6 +63,7 @@ Accomplished goals are marked with a (*)
 Trellis::Application:: Base case for all Trellis applications
 Trellis::Page:: Base class for all application Pages
 Trellis::Renderer:: Renders XML/XHTML tags in the markup using Radius 
+Trellis::Router:: Encapsulated the base route for a page
 Trellis::Component:: Base class for all Trellis components (work in progress)
 Trellis::DefaultRouter:: Encapsulates the default routing logic
 
@@ -75,7 +77,7 @@ Trellis::DefaultRouter:: Encapsulates the default routing logic
 * Navigation is a la Tapestry; Page methods can return the instance of a 
   injected Page or they can return self in which case the same page is 
   re-rendered.
-* Component can register their event handlers with the page. The page wraps the
+* Components can register their event handlers with the page. The page wraps the
   event handlers of the contained components and dispatches the events to the 
   component instance. 
 * Currently the Application is a single object, the multi-threading (which I had 
@@ -118,16 +120,19 @@ mongrel => http://mongrel.rubyforge.org
 radius => http://radius.rubyforge.org
 builder => http://builder.rubyforge.org
 paginator => http://paginator.rubyforge.org
-hpricot => http://code.whytheluckystiff.net/hpricot
 extensions => http://extensions.rubyforge.org
 haml => http://haml.hamptoncatlin.com
 markaby => http://code.whytheluckystiff.net/markaby
+nokogiti => http://nokogiri.org/
+facets => http://facets.rubyforge.org/
+directory_watcher => http://rubyforge.org/projects/codeforpeople
+erubis => http://www.kuwata-lab.com/erubis/
 
 == LICENSE:
 
 (The MIT License)
 
-Copyright &169;2001-2009 Integrallis Software, LLC.
+Copyright &169;2001-2010 Integrallis Software, LLC.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -150,7 +155,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 == Contact
 
-Author::     Brian Sam-Bodden
+Author::     Brian Sam-Bodden & the Folks at Integrallis
 Email::      bsbodden@integrallis.com
-Home Page::  http://integrallis.com
+Home Page::  http://trellisframework.org
 License::    MIT Licence (http://www.opensource.org/licenses/mit-license.html)

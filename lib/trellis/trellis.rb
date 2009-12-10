@@ -63,6 +63,7 @@ module Trellis
       child.attr_array(:persistents)
       child.class_attr_reader(:session_config)
       child.attr_array(:static_routes)
+      child.attr_array(:routers)
       child.meta_def(:logger) { Application.logger }
       child.instance_variable_set(:@session_config, OpenStruct.new({:impl => :cookie}))
       super
@@ -148,11 +149,18 @@ module Trellis
       end
       application
     end
+    
+    def self.routers 
+      unless @routers
+        @routers = Page.subclasses.values.collect { |page| page.router }.compact.sort {|a,b| b.score <=> a.score }
+      end
+      @routers
+    end
 
     # find the first page with a suitable router, if none is found use the default router
     def find_router_for(request)
-      match = Page.subclasses.values.find { |page| page.router && page.router.matches?(request) }
-      match ? match.router : DefaultRouter.new(:application => self)
+      match = Application.routers.find { |router| router.matches?(request) }
+      match || DefaultRouter.new(:application => self)
     end
     
     # rack call interface.
@@ -334,13 +342,18 @@ module Trellis
   class Router
     EVENT_REGEX = %r{^(?:.+)/events/(?:([^/\.]+)(?:\.([^/\.]+)?)?)(?:/(?:([^\.]+)?))?}
 
-    attr_reader :application, :pattern, :keys, :path, :page
+    attr_reader :application, :pattern, :keys, :path, :page, :score
     
     def initialize(options={})
       @application = options[:application]
       @path = options[:path]
       @page = options[:page]
-      compile_path if @path
+      if @path
+        compile_path 
+        compute_score
+      else
+        @score = 3 # since "/*" scores at 2
+      end
     end
 
     def route(request = nil)
@@ -376,6 +389,10 @@ module Trellis
         params.each_pair { |name, value| page.instance_variable_set("@#{name}".to_sym, value) }
       end
     end
+    
+    def to_s
+      @path
+    end
 
     private
 
@@ -406,6 +423,18 @@ module Trellis
       else
         raise TypeError, @path
       end
+    end
+    
+    def compute_score
+      score = 0
+      parts = @path.split('/').delete_if {|part| part.empty? }
+      parts.each_index do |index| 
+        part = parts[index]
+        power = parts.size - index
+        factor = part.match('\*') ? 1 : (part.match(':') ? 2 : 3)
+        score = score + (factor * (2**index))
+      end
+      @score = score
     end
   end
   

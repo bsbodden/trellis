@@ -1,6 +1,6 @@
 (The MIT License)
 
-Copyright &169;2001-2008 Integrallis Software, LLC.
+Copyright &169;2001-2010 Integrallis Software, LLC.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the

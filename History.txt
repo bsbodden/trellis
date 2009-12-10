@@ -1,7 +1,12 @@
+== 0.0.8
+* 1 major enhancement:
+  * implemented automatic route sorting
+
 == 0.0.7
-* 3 major enhancement:
+* 3 major enhancements:
+  * ripped out rexml/hpricot replaced with nokogiri
   * implemented page get method to override default page rendering
-  * added trellis namespace xmlns method for markaby (to prevent rexml from freaking out)
+  * added trellis namespace xmlns method for markaby
   * clean all examples to add trellis namespace
 
 == 0.0.6
