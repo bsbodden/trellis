@@ -1,3 +1,7 @@
+== 0.0.9
+* 1 major enhancement:
+  * added missing nokogiri gem from the dependencies
+
 == 0.0.8
 * 1 major enhancement:
   * implemented automatic route sorting
