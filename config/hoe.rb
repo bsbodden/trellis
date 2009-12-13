@@ -15,6 +15,7 @@ EXTRA_DEPENDENCIES = [
   ['nokogiri', '>= 1.4.0'],
   ['extensions', '>= 0.6.0'],
   ['haml', '>= 2.2.9'],
+  ['markaby', '>= 0.5'],
   ['RedCloth', '>= 4.2.2'],
   ['bluecloth', '>= 2.0.5'],
   ['log4r', '>= 1.1.2'],
