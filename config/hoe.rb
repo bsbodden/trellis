@@ -21,6 +21,7 @@ EXTRA_DEPENDENCIES = [
   ['log4r', '>= 1.1.2'],
   ['facets', '>= 2.7.0'],
   ['directory_watcher', '>= 1.2.0'], 
+  ['eventmachine', '>= 0.12.10'],
   ['rack-cache', '>= 0.5.2'],
   ['rack-contrib', '>= 0.9.2'],
   ['rack-test', '>= 0.5.0'],
