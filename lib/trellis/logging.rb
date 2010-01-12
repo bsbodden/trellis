@@ -33,6 +33,10 @@ class Log4r::Logger #:nodoc:
   def <<(text)
     info(text.delete!("\n"))
   end  
+  
+  def write(text)
+    info(text.delete!("\n"))
+  end
 end
 
 module Logging #:nodoc: all
