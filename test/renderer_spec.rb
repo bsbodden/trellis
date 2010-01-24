@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/spec_helper.rb'
 
 require "rack"
-require_fixtures 'application_spec_applications'
+require_fixtures 'application_fixtures'
 
 describe Trellis::Renderer do
 

@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/spec_helper.rb'
 
-require_fixtures 'application_spec_applications'
+require_fixtures 'application_fixtures'
 
 describe Trellis::Router, " when constructed" do
 

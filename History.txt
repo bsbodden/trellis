@@ -1,6 +1,12 @@
+== 0.1.1
+* 1 major enhancement
+  * before, around and after filters
+  * refactoring (clean up) of call! (rack specification) method
+
 == 0.1.0
 * 1 major enhancement
   * fix logger for rack 1.0.1
+
 == 0.0.9
 * 1 major enhancement:
   * added missing nokogiri gem from the dependencies

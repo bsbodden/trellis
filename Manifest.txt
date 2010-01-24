@@ -1,4 +1,3 @@
-.gitignore
 History.txt
 License.txt
 Manifest.txt
@@ -19,6 +18,7 @@ examples/crud_components/html/style/trellis.css
 examples/crud_components/source/crud_components.rb
 examples/crud_components/source/domain.rb
 examples/examples.txt
+examples/filters/source/filters.rb
 examples/flickr/source/flickr.rb
 examples/guest_book/source/guest_book.rb
 examples/hangman/html/game_over.xhtml
@@ -111,8 +111,10 @@ test/application_spec.rb
 test/component_spec.rb
 test/core_extensions_spec.rb
 test/default_router_spec.rb
-test/fixtures/application_spec_applications.rb
-test/fixtures/component_spec_components.rb
+test/filters_spec.rb
+test/fixtures/application_fixtures.rb
+test/fixtures/component_fixtures.rb
+test/fixtures/filters_fixtures.rb
 test/page_spec.rb
 test/renderer_spec.rb
 test/router_spec.rb

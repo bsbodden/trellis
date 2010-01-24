@@ -3,7 +3,7 @@
 #--
 # Copyright &169;2001-2008 Integrallis Software, LLC. 
 # All Rights Reserved.
-# 
+# process
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
 # "Software"), to deal in the Software without restriction, including
@@ -40,6 +40,7 @@ require 'facets'
 require 'directory_watcher'
 require 'erubis'
 require 'ostruct'
+require 'advisable'
 
 module Trellis
   
@@ -55,6 +56,7 @@ module Trellis
     
     @@partials = Hash.new
     @@layouts = Hash.new
+    @@filters = Hash.new
     
     # descendant application classes get a singleton class level instances for 
     # holding homepage, dependent pages, static resource routing paths
@@ -104,6 +106,15 @@ module Trellis
     
     def self.layout(name, body = nil, options = nil, &block)
       store_template(name, :layout, body, options, &block)
+    end
+    
+    def self.filters
+      @@filters
+    end
+    
+    def self.filter(name, kind = :before, &block)
+      name = name.to_sym unless name.class == Symbol
+      @@filters[name] = OpenStruct.new({:name => name, :kind => kind, :block => block}) 
     end
     
     # bootstrap the application
@@ -173,7 +184,7 @@ module Trellis
       response = Rack::Response.new
       request = Rack::Request.new(env)
 
-      Application.logger.debug "request received with url_root of #{request.script_name}" if request.script_name
+      Application.logger.debug "request received with url_root of #{request.script_name}" unless request.script_name.blank?
 
       session = env['rack.session'] ||= {}
 
@@ -184,7 +195,6 @@ module Trellis
       if page
         load_persistent_fields_data(session)
         page.application = self
-        
         page.class.url_root = request.script_name
         page.path = request.path_info.sub(/^\//, '')
         page.inject_dependent_pages
@@ -193,47 +203,56 @@ module Trellis
         page.call_if_provided(:after_load)
         page.params = request.params.keys_to_symbols
         router.inject_parameters_into_page_instance(page, request)
-        result = route.event ? page.process_event(route.event, route.value, route.source, session) : page
 
+        result = route.event ? page.process_event(route.event, route.value, route.source, session) : page
+        
         Application.logger.debug "response is #{result} an instance of #{result.class}"
         
         # -------------------------
         # prepare the http response
         # -------------------------
         
-        if result.kind_of?(Trellis::Redirect)
-          # redirect short circuits
-          result.apply_to(request, response)
-          Application.logger.debug "redirecting to ==> #{request.script_name}/#{result.target}"
-        elsif (request.post? || route.event) && result.kind_of?(Trellis::Page)
-          # for action events of posts then use redirect after post pattern
-          # remove the events path and just return to the page
-          path = result.path ? result.path.gsub(/\/events\/.*/, '') : result.class.class_to_sym
-          response.status = 302
-          response.headers["Location"] = "#{request.script_name}/#{path}"
-          Application.logger.debug "redirecting to ==> #{request.script_name}/#{path}"
-        else
-          # handle the get method
-          if result.kind_of?(Trellis::Page) && result.respond_to?(:get)
-            get = result.get
-            if get.kind_of?(Trellis::Redirect)
-              # redirect short circuits
-              get.apply_to(request, response)
-              Application.logger.debug "redirecting to ==> #{request.script_name}/#{get.target}"
-            elsif (get.class == result.class) || !get.kind_of?(Trellis::Page)
-              response.body = get.kind_of?(Trellis::Page) ? get.render : get
-              response.status = 200
-            else
-              path = get.path ? get.path.gsub(/\/events\/.*/, '') : get.class.class_to_sym
-              response.status = 302
-              response.headers["Location"] = "#{request.script_name}/#{path}"
-              Application.logger.debug "redirecting to ==> #{request.script_name}/#{path}"              
-            end
+        # -------------------------------------
+        # process the 'get' method if available
+        # -------------------------------------
+        same_class = true
+        if result.kind_of?(Trellis::Page) && result.respond_to?(:get)
+          result_cls = result.class
+          result = result.get
+          same_class = result.class == result_cls
+          Application.logger.debug "processed get method, result.class is now => #{result.class}"
+        end
+        
+        case result
+        # -----------------
+        # explicit redirect
+        # -----------------
+        when Trellis::Redirect
+          result.process(request, response)
+          Application.logger.debug "redirecting (explicit) to ==> #{request.script_name}/#{result.target}"      
+        # -----------------
+        # implicit redirect
+        # -----------------
+        when Trellis::Page
+          # redirect after POST or 'get' method returns a different page
+          if (request.post? || route.event) || !same_class
+            path = result.path ? result.path.gsub(/\/events\/.*/, '') : result.class.class_to_sym
+            response.status = 302
+            response.headers["Location"] = "#{request.script_name}/#{path}"
+            Application.logger.debug "redirecting (implicit) to ==> #{request.script_name}/#{path}"
+          # simply render page
           else
-            # for render requests simply render the page
-            response.body = result.kind_of?(Trellis::Page) ? result.render : result
+            response.body = result.render
             response.status = 200
+            Application.logger.debug "rendering page #{result}"
           end
+        # -------------------------------
+        # stringify any other result type
+        # -------------------------------
+        else
+          response.body = result.to_s
+          response.status = 200
+          Application.logger.debug "rendering #{result}"
         end
       else
         response.status = 404
@@ -491,7 +510,7 @@ module Trellis
       @target, @status = target, status
     end
     
-    def apply_to(request, response)
+    def process(request, response)
       response.status = status 
       response["Location"] = "#{request.script_name}#{target.starts_with?('/') ? '' : '/'}#{target}"
     end
@@ -504,6 +523,7 @@ module Trellis
   # A Trellis Page contains listener methods to respond to events trigger by 
   # components in the same page or other pages
   class Page
+    extend Advisable
     include Nokogiri::XML
     
     @@subclasses = Hash.new
@@ -598,6 +618,27 @@ module Trellis
       @persistents = @persistents | fields    
     end
     
+    def self.apply_filter(name, options = {})
+      filter = Application.filters[name]
+      methods = options[:to] == :all ? self.public_instance_methods(false) : [options[:to]]
+      methods << :get if options[:to] == :all
+      methods = methods - [:before_load, :after_load, :before_render, :after_render, :underscore_class_name]
+      Application.logger.debug "in #{self} applying filter #{name} to methods: #{methods.join(', ')}"
+      
+      methods.each do |method|
+        case filter.kind
+        when :around
+          around method do |target| 
+            filter.block.call(self) { target.call } 
+          end
+        when :before
+          before method do filter.block.call(self) end
+        when :after 
+          after method do filter.block.call(self) end
+        end
+      end
+    end
+    
     def self.get_page(sym)
       @@subclasses[sym]
     end
@@ -612,6 +653,8 @@ module Trellis
       end
       @logger = Application.logger
     end
+    
+    def get; self; end
     
     def redirect(path, status=nil)
       Redirect.new(path, status)

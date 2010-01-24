@@ -27,7 +27,8 @@ EXTRA_DEPENDENCIES = [
   ['rack-test', '>= 0.5.3'],
   ['erubis', '>= 2.6.5'],
   ['rspec', '>= 1.2.9'],
-  ['newgem', '>= 1.5.2']
+  ['newgem', '>= 1.5.2'],
+  ['advisable', '>= 1.0.0']
 ]    # An array of rubygem dependencies [name, version]
 
 @config_file = "~/.rubyforge/user-config.yml"

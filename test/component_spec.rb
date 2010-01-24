@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + '/spec_helper.rb'
 
 require "rack"
 require 'rack/test'
-require_fixtures 'component_spec_components'
+require_fixtures 'component_fixtures'
 
 describe Trellis::Component, " in an application" do
   include Rack::Test::Methods
