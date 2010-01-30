@@ -817,15 +817,14 @@ module Trellis
     
     def self.process_component_contributions(component, classes_processed, attributes=nil)
       unless classes_processed.include?(component) 
-        component.add_style_links_to_page(self, attributes)
-        component.add_script_links_to_page(self, attributes)
-        component.add_class_styles_to_page(self, attributes)
-        component.add_class_scripts_to_page(self, attributes)
+        [:style_links, :script_links, :class_styles, :class_scripts].each do |what|
+          component.add_to_page(self, what, attributes)
+        end
         component.add_document_modifications_to_page(self)
       end        
 
-      component.add_styles_to_page(self, attributes)
-      component.add_scripts_to_page(self, attributes)
+      component.add_to_page(self, :styles, attributes)
+      component.add_to_page(self, :scripts, attributes)
 
       classes_processed << component unless classes_processed.include?(component)      
     end    
@@ -1064,6 +1063,26 @@ module Trellis
      
       send("#{sym}=", default_value) if default_value
     end 
+    
+    def self.add_to_page(page, what, attributes)
+      builder = Builder::XmlMarkup.new
+      collection = self.send(what)
+      location = [:class_scrips, :scripts].include?(what) ? "html/body" : "html/head"
+      collection.each do |element|
+        element = element.replace_ant_style_properties(attributes) if attributes
+        case what
+        when :style_links
+          value = builder.link(:rel => "stylesheet", :type => "text/css", :href => element)
+        when :script_links
+          value = builder.script('', :type => "text/javascript", :src => element)
+        when :class_styles, :styles
+          value = builder.style(:type => "text/css") { |builder| builder << element }
+        when :class_scripts, :scripts
+          value = builder.script(:type => "text/javascript") { |builder| builder << element }
+        end
+        page.dom.at_css(location).children.last.after("\n#{value}")
+      end
+    end
     
     def self.add_style_links_to_page(page, attributes)
       style_links.each do |href|  

@@ -24,25 +24,22 @@ module Routing
     route '/day_of_the_year/:year/:month/:day'
 
     def parse_date
-      Date.parse("#{@month}/#{@day}/#{@year}")
+      Date.parse("#{@month}/#{@day}/#{@year}").strftime("%e %B, %Y")
     end
 
     def on_select
       self
     end
-
-    template do
-      thtml {
-        body {
-          h2 {
-            text %[Date <trellis:value name="page.parse_date"/>]
-          }
-          text %[is the <trellis:eval expression="Date.parse(month + '/' + day + '/' + year).yday.to_s"/> day of the year]
-          br
-          text %[<trellis:action_link>Refresh</trellis:action_link>]
-        }
-      }
-    end
+    
+    template %[
+      <html xml:lang="en" lang="en" 
+           xmlns:trellis="http://trellisframework.org/schema/trellis_1_0_0.xsd" 
+           xmlns="http://www.w3.org/1999/xhtml">
+       <h2>@{parse_date}@ is the @{Date.parse(@month + '/' + @day + '/' + @year).yday.ordinalize.to_s}@ day of the year!</h2>
+       <br/>
+       <trellis:action_link>Refresh</trellis:action_link>
+      </html>
+    ], :format => :eruby
   end
 
   Routing.new.start if __FILE__ == $PROGRAM_NAME
