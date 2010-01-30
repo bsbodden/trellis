@@ -1084,68 +1084,6 @@ module Trellis
       end
     end
     
-    def self.add_style_links_to_page(page, attributes)
-      style_links.each do |href|  
-        href = href.replace_ant_style_properties(attributes) if attributes
-        builder = Builder::XmlMarkup.new
-        link = builder.link(:rel => "stylesheet", :type => "text/css", :href => href)
-        page.dom.at_css("html/head").children.last.after("\n#{link}")
-      end
-    end
-    
-    def self.add_script_links_to_page(page, attributes)
-      script_links.each do |src|  
-        src = src.replace_ant_style_properties(attributes) if attributes
-        builder = Builder::XmlMarkup.new
-        script = builder.script('', :type => "text/javascript", :src => src)
-        page.dom.at_css("html/head").children.last.after("\n#{script}")
-      end      
-    end
-    
-    def self.add_class_styles_to_page(page, attributes)
-      class_styles.each do |body|  
-        body = body.replace_ant_style_properties(attributes) if attributes
-        builder = Builder::XmlMarkup.new
-        style = builder.style(:type => "text/css") do |builder|
-          builder << body
-        end
-        page.dom.at_css("html/head").children.last.after("\n#{style}")
-      end      
-    end
-    
-    def self.add_class_scripts_to_page(page, attributes)
-      class_scripts.each do |body|  
-        body = body.replace_ant_style_properties(attributes) if attributes
-        builder = Builder::XmlMarkup.new
-        script = builder.script(:type => "text/javascript") do |builder|
-          builder << body
-        end
-        page.dom.at_css("html/body").children.last.after("\n#{script}")
-      end      
-    end
-    
-    def self.add_styles_to_page(page, attributes)
-      styles.each do |body|  
-        body = body.replace_ant_style_properties(attributes) if attributes
-        builder = Builder::XmlMarkup.new
-        style = builder.style(:type => "text/css") do |builder|
-          builder << body
-        end
-        page.dom.at_css("html/head").children.last.after("\n#{style}")
-      end      
-    end
-    
-    def self.add_scripts_to_page(page, attributes)
-      scripts.each do |body|  
-        body = body.replace_ant_style_properties(attributes) if attributes
-        builder = Builder::XmlMarkup.new
-        script = builder.script(:type => "text/javascript") do |builder|
-          builder << body
-        end
-        page.dom.at_css("html/body").children.last.after("\n#{script}")
-      end      
-    end
-    
     def self.add_document_modifications_to_page(page)
       document_modifications.each do |block| 
         page.dom.instance_eval(&block)
