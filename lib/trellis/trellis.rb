@@ -184,7 +184,8 @@ module Trellis
       response = Rack::Response.new
       request = Rack::Request.new(env)
 
-      Application.logger.debug "request received with url_root of #{request.script_name}" unless request.script_name.blank?
+      url_root = request.script_name.blank? ? '' : request.script_name 
+      Application.logger.debug "request received with url_root of #{url_root}" unless url_root
 
       session = env['rack.session'] ||= {}
 
@@ -195,7 +196,7 @@ module Trellis
       if page
         load_persistent_fields_data(session)
         page.application = self
-        page.class.url_root = request.script_name
+        page.class.url_root = url_root
         page.path = request.path_info.sub(/^\//, '')
         page.inject_dependent_pages
         page.call_if_provided(:before_load)
@@ -229,7 +230,7 @@ module Trellis
         # -----------------
         when Trellis::Redirect
           result.process(request, response)
-          Application.logger.debug "redirecting (explicit) to ==> #{request.script_name}/#{result.target}"      
+          Application.logger.debug "redirecting (explicit) to ==> #{url_root}/#{result.target}"      
         # -----------------
         # implicit redirect
         # -----------------
@@ -239,7 +240,7 @@ module Trellis
             path = result.path ? result.path.gsub(/\/events\/.*/, '') : result.class.class_to_sym
             response.status = 302
             response.headers["Location"] = "#{request.script_name}/#{path}"
-            Application.logger.debug "redirecting (implicit) to ==> #{request.script_name}/#{path}"
+            Application.logger.debug "redirecting (implicit) to ==> #{url_root}/#{path}"
           # simply render page
           else
             render_response(response, result.render)
