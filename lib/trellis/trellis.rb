@@ -339,14 +339,14 @@ module Trellis
             page_locator = Page.template_registry[template]
             page = Page.get_page(page_locator)
             Application.logger.info "reloading template for page => #{page}: #{template}"
-            File.open(template, "r") { |f| page.template(f.read, :format => format) }
+            page.load_template(template, format)
           end
         end
       end
       Application.logger.info "watching #{templates_directory} for template changes..."
       directory_watcher
     end
-  end
+  end # application
   
   # -- Route --
   # A route object encapsulates an event, the event destination (target), the 
@@ -357,7 +357,7 @@ module Trellis
     def initialize(destination, event = nil, source = nil, value = nil)
       @destination, @event, @source, @value = destination, event, source, value
     end
-  end
+  end # route
 
   # -- Router --
   # A Router returns a Route in response to an HTTP request
@@ -458,7 +458,7 @@ module Trellis
       end
       @score = score
     end
-  end
+  end # router
   
   # -- DefaultRouter --
   # The default routing scheme is in the form /page[.event[_source]][/value][?query_params]
@@ -500,7 +500,7 @@ module Trellis
 
       "#{url_root}#{destination}#{event_info}"
     end
-  end
+  end # default_router
   
   # -- Redirect --
   # Encapsulates an HTTP redirect (is the object returned by Page#redirect method)
@@ -517,7 +517,7 @@ module Trellis
       response.status = status 
       response["Location"] = "#{request.script_name}#{target.starts_with?('/') ? '' : '/'}#{target}"
     end
-  end
+  end # redirect
   
   # -- Page --
   # Represents a Web Page in a Trellis Application. A Page can contain multiple
@@ -554,6 +554,10 @@ module Trellis
     
     def self.layout
       @layout
+    end
+    
+    def self.load_template(file, format)
+      File.open(file, "r") { |f| self.template(f.read, :format => format) }
     end
     
     def self.template(body = nil, options = nil, &block)
@@ -770,7 +774,7 @@ module Trellis
           file = File.find_first(dir, filename)
           if file
             Application.logger.debug "found template for page => #{clazz}: #{filename}"
-            File.open(file, "r") { |f| clazz.template(f.read, :format => format) }
+            clazz.load_template(file, format)
             # add the template file to the external template registry so that we can reload it
             @@template_registry["#{dir}#{filename}"] = clazz.class_to_sym
             Application.logger.debug "registering template file for #{clazz.class_to_sym} => #{dir}#{filename}"
@@ -1187,7 +1191,7 @@ module Trellis
         end
       end
     end 
-  end
+  end # component
   
   # load trellis core components
   require 'trellis/component_library/core_components'
