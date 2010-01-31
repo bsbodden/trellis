@@ -304,12 +304,7 @@ module Trellis
     
     def load_persistent_fields_data(session)
       self.class.persistents.each do |persistent_field|
-        field = "@#{persistent_field}".to_sym
-        current_value = instance_variable_get(field)
-        new_value = session[persistent_field]
-        if current_value != new_value && new_value != nil
-          instance_variable_set(field, new_value)
-        end      
+        instance_variable_set_if_different(persistent_field, session[persistent_field])     
       end      
     end
     
@@ -838,12 +833,7 @@ module Trellis
     
     def load_persistent_fields_data(session)
       self.class.persistents.each do |persistent_field|
-        field = "@#{persistent_field}".to_sym
-        current_value = instance_variable_get(field)
-        new_value = session["#{self.class}_#{persistent_field}"]
-        if current_value != new_value && new_value != nil
-          instance_variable_set(field, new_value)
-        end      
+        instance_variable_set_if_different(persistent_field, session["#{self.class}_#{persistent_field}"])     
       end      
     end
     
@@ -1144,13 +1134,9 @@ module Trellis
 
     def load_component_session_information(page, instance_variable_name, session_data)
       self.class.persistents.each do |field|
-        field_sym = "@#{field}".to_sym
-        current_value = instance_variable_get(field_sym)
         key = generate_data_session_id(page, instance_variable_name, field)
         new_value = session_data[key] if session_data
-        if current_value != new_value && new_value != nil
-          instance_variable_set(field_sym, new_value)
-        end      
+        instance_variable_set_if_different(field, new_value)     
       end
     end
     

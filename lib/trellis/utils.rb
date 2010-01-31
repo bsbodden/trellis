@@ -36,6 +36,14 @@ class Object #:nodoc:
   def call_if_provided(sym)
     send sym if respond_to? sym
   end
+  
+  def instance_variable_set_if_different(persistent_field, value)
+    field = "@#{persistent_field}".to_sym
+    current_value = instance_variable_get(field)
+    if current_value != value && value != nil
+      instance_variable_set(field, value)
+    end
+  end
 end  
 
 class Class #:nodoc:
