@@ -274,6 +274,10 @@ module Markaby
            "xmlns:trellis" => "http://trellisframework.org/schema/trellis_1_0_0.xsd", &block)
     end
     
+    def bluecloth(body)
+      thtml { body { text "#{BlueCloth.new(body).to_html}" } }
+    end
+    
     def render_body
       text %[@!{@body}@]
     end

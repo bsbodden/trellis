@@ -281,7 +281,7 @@ module Trellis
           if type == :partial
             html = BlueCloth.new(body).to_html
           else 
-            html = Markaby.build { thtml { body { text "#{BlueCloth.new(body).to_html}" } }}
+            html = Markaby.build { bluecloth(body) }
           end
         else # assume the body is (x)html, also eruby is treated as (x)html at this point
           html = body
@@ -571,7 +571,7 @@ module Trellis
           if @layout
             html = BlueCloth.new(body).to_html
           else
-            html = Markaby.build { thtml { body { text "#{BlueCloth.new(body).to_html}" } }}
+            html = Markaby.build { bluecloth(body) }
           end
         else # assume the body is (x)html, also eruby is treated as (x)html at this point
           html = body
