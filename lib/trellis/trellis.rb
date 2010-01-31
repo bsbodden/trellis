@@ -687,12 +687,12 @@ module Trellis
    
     def load_page_session_information(session)
       load_persistent_fields_data(session)
-      load_stateful_components_data(session)
+      process_stateful_component_data(:load, session)
     end
     
     def save_page_session_information(session)
-      save_persistent_fields_data(session)
-      save_stateful_components_data(session)           
+      save_persistent_fields_data(session)      
+      process_stateful_component_data(:save, session)   
     end
     
     def render  
@@ -840,25 +840,24 @@ module Trellis
       end      
     end
     
-    def load_stateful_components_data(session)
-      self.instance_variables.each do |instance_variable_name|
-        instance_variable = self.instance_variable_get(instance_variable_name.to_sym)
-        instance_variable.load_component_session_information(self, instance_variable_name, session) if instance_variable.respond_to?(:load_component_session_information)
-      end      
-    end
-    
     def save_persistent_fields_data(session)
       self.class.persistents.each do |persistent_field|
         session["#{self.class}_#{persistent_field}"] = instance_variable_get("@#{persistent_field}".to_sym)
       end       
     end
     
-    def save_stateful_components_data(session)
+    def process_stateful_component_data(action, session)
       self.instance_variables.each do |instance_variable_name|
         instance_variable = self.instance_variable_get(instance_variable_name.to_sym)
-        instance_variable.save_component_session_information(self, instance_variable_name, session) if instance_variable.respond_to?(:save_component_session_information)
-      end      
-    end    
+        case action
+        when :load
+          instance_variable.load_component_session_information(self, instance_variable_name, session) if instance_variable.respond_to?(:load_component_session_information)
+        when :save
+          instance_variable.save_component_session_information(self, instance_variable_name, session) if instance_variable.respond_to?(:save_component_session_information)
+        end
+      end
+    end
+        
   end # page
   
   # -- Renderer --
