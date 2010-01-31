@@ -1130,7 +1130,7 @@ module Trellis
 
     def save_component_session_information(page, instance_variable_name, session_data)
       self.class.persistents.each do |field|
-        key = "#{page.class}_#{self.class}_#{instance_variable_name}_#{field}"
+        key = generate_data_session_id(page, instance_variable_name, field)
         session_data[key] = instance_variable_get("@#{field}".to_sym) if session_data
       end 
     end 
@@ -1139,7 +1139,8 @@ module Trellis
       self.class.persistents.each do |field|
         field_sym = "@#{field}".to_sym
         current_value = instance_variable_get(field_sym)
-        new_value = session_data["#{page.class}_#{self.class}_#{instance_variable_name}_#{field}"] if session_data
+        key = generate_data_session_id(page, instance_variable_name, field)
+        new_value = session_data[key] if session_data
         if current_value != new_value && new_value != nil
           instance_variable_set(field_sym, new_value)
         end      
@@ -1147,6 +1148,10 @@ module Trellis
     end
     
     private
+    
+    def generate_data_session_id(page, instance_variable_name, field)
+      "#{page.class}_#{self.class}_#{instance_variable_name}_#{field}"
+    end
 
     # - takes a page parameter
     # - adds an instance of the component with the given id to the page
