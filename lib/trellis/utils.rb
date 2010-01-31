@@ -52,29 +52,36 @@ class Class #:nodoc:
       downcase.split('/').last
   end
   
-  def class_attr_accessor(*syms)
-    syms.flatten.each do |sym|
-      metaclass.instance_eval { attr_accessor(sym) }
-    end
-  end
-
   def instance_attr_accessor(*syms)
     syms.flatten.each do |sym|
       instance_eval { attr_accessor(sym) }
     end
-  end
+  end  
   
+  def class_attr_accessor(*syms)
+    class_attr(:accessor, *syms)
+  end
+
   def class_attr_reader(*syms)
-    syms.flatten.each do |sym|
-      metaclass.instance_eval { attr_reader(sym) }
-    end
+    class_attr(:reader, *syms)
   end
   
   def class_attr_writer(*syms)
-    syms.flatten.each do |sym|
-      metaclass.instance_eval { attr_writer(sym) }
-    end
+    class_attr(:writer, *syms)
   end  
+  
+  def class_attr(kind, *syms)
+    syms.flatten.each do |sym|
+      case kind
+      when :accessor
+        metaclass.instance_eval { attr_accessor(sym) }
+      when :reader
+        metaclass.instance_eval { attr_reader(sym) }
+      when :writer
+        metaclass.instance_eval { attr_writer(sym) }   
+      end
+    end
+  end
   
   def attr_array(plural_array_name_sym, options={}) 
     create_accessor = options[:create_accessor].nil? ? true : options[:create_accessor]
