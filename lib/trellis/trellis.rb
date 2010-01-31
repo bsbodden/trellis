@@ -242,16 +242,14 @@ module Trellis
             Application.logger.debug "redirecting (implicit) to ==> #{request.script_name}/#{path}"
           # simply render page
           else
-            response.body = result.render
-            response.status = 200
+            render_response(response, result.render)
             Application.logger.debug "rendering page #{result}"
           end
         # -------------------------------
         # stringify any other result type
         # -------------------------------
         else
-          response.body = result.to_s
-          response.status = 200
+          render_response(response, result.to_s)
           Application.logger.debug "rendering #{result}"
         end
       else
@@ -262,6 +260,11 @@ module Trellis
     end
 
     private
+    
+    def render_response(response, content)
+      response.body = content
+      response.status = 200
+    end
     
     def self.store_template(name, type, body = nil, options = nil, &block)
       format = (options[:format] if options) || :html
