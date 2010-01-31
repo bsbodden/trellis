@@ -873,69 +873,9 @@ module Trellis
     
     def initialize(page)
       @page = page
-      @context = Context.new
-      # context for erubis templates
-      @eruby_context = Erubis::Context.new #if @page.class.format == :eruby
-      
-      # add all instance variables in the page as values accesible from the tags
-      page.instance_variables.each do |var|
-        value = page.instance_variable_get(var)
-        unless value.kind_of?(Trellis::Page)
-          sym = "#{var}=".split('@').last.to_sym
-          @context.globals.send(sym, value)
-          @eruby_context["#{var}".split('@').last] = value #if @eruby_context
-        end
-      end
-
-      # add other useful values to the tag context
-      @context.globals.send(:page_name=, page.class.to_s)
-      @eruby_context[:page_name] = page.class.to_s #if @eruby_context
-
-      # add public page methods to the context
-      page.public_methods(false).each do |method_name|
-        # skip event handlers and the 'get' method
-        unless method_name.starts_with?('on_') || SKIP_METHODS.include?(method_name)
-          @eruby_context.meta_def(method_name) do |*args|
-            page.send(method_name.to_sym, *args)
-          end #if @eruby_context
-          @context.globals.meta_def(method_name) do |*args|
-            page.send(method_name.to_sym, *args)
-          end
-        end 
-      end
-      
-      # add page helper methods to the context
-      INCLUDE_METHODS.each do |method_name|
-        @eruby_context.meta_def(method_name) do |*args|
-          page.send(method_name.to_sym, *args)
-        end #if @eruby_context
-        @context.globals.meta_def(method_name) do |*args|
-          page.send(method_name.to_sym, *args)
-        end
-      end
-      
-      # add public application methods to the context
-      page.application.public_methods(false).each do |method_name|
-        @eruby_context.meta_def(method_name) do |*args|
-          page.application.send(method_name.to_sym, *args)
-        end #if @eruby_context
-        @context.globals.meta_def(method_name) do |*args|
-          page.application.send(method_name.to_sym, *args)
-        end        
-      end
-
-      # add the page to the context too
-      @context.globals.page = page
-      @eruby_context[:page] = page #if @eruby_context
-      
-      # register the components contained in the page with the renderer's context
-      page.class.components.each do |component|
-        component.register_with_tag_context(@context)
-      end 
-      
-      @parser = Parser.new(@context, :tag_prefix => 'trellis')
+      configure_context
     end
-    
+        
     def render
       preprocessed = ""
       layout_id = @page.class.layout
@@ -988,6 +928,61 @@ module Trellis
       end
     end
     
+    private
+    
+    def configure_context
+      @context = Context.new
+      # context for erubis templates
+      @eruby_context = Erubis::Context.new #if @page.class.format == :eruby
+      
+      # add all instance variables in the page as values accesible from the tags
+      @page.instance_variables.each do |var|
+        value = @page.instance_variable_get(var)
+        unless value.kind_of?(Trellis::Page)
+          sym = "#{var}=".split('@').last.to_sym
+          @context.globals.send(sym, value)
+          @eruby_context["#{var}".split('@').last] = value #if @eruby_context
+        end
+      end
+
+      # add other useful values to the tag context
+      @context.globals.send(:page_name=, @page.class.to_s)
+      @eruby_context[:page_name] = @page.class.to_s #if @eruby_context
+
+      # add public page methods to the context      
+      add_method_to_context(@page.public_methods(false), @page)
+      
+      # add page helper methods to the context      
+      add_method_to_context(INCLUDE_METHODS, @page) 
+      
+      # add public application methods to the context
+      add_method_to_context(@page.application.public_methods(false), @page.application)
+
+      # add the page to the context too
+      @context.globals.page = @page
+      @eruby_context[:page] = @page
+      
+      # register the components contained in the page with the renderer's context
+      @page.class.components.each do |component|
+        component.register_with_tag_context(@context)
+      end 
+      
+      @parser = Parser.new(@context, :tag_prefix => 'trellis')
+    end
+    
+    def add_method_to_context(methods, target)
+      methods.each do |method_name|
+        # skip event handlers and the 'get' method
+        unless method_name.starts_with?('on_') || SKIP_METHODS.include?(method_name)
+          @eruby_context.meta_def(method_name) do |*args|
+            target.send(method_name.to_sym, *args)
+          end #if @eruby_context
+          @context.globals.meta_def(method_name) do |*args|
+            target.send(method_name.to_sym, *args)
+          end
+        end 
+      end
+    end
   end # renderer
   
   # -- Component --
