@@ -94,8 +94,9 @@ class Class #:nodoc:
   def attr_array(plural_array_name_sym, options={}) 
     create_accessor = options[:create_accessor].nil? ? true : options[:create_accessor]
     plural_array_name_sym = plural_array_name_sym.to_s #convert to string if it is a symbol
-    instance_variable_set("@#{plural_array_name_sym}".to_sym, Array.new)
-    meta_def(plural_array_name_sym) { instance_variable_get("@#{plural_array_name_sym}".to_sym) } if create_accessor
+    instance_variable = "@#{plural_array_name_sym}".to_sym
+    instance_variable_set(instance_variable, Array.new)
+    meta_def(plural_array_name_sym) { instance_variable_get(instance_variable) } if create_accessor
   end
 
   def create_child(class_name, mod = Object, register = true, &block)
