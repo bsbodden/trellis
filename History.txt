@@ -1,5 +1,9 @@
-== 0.1.1
+== 0.1.2
 * 1 major enhancement
+  * big refactor fest #1 - removed a great deal of dup code
+
+== 0.1.1
+* 2 major enhancement
   * before, around and after filters
   * refactoring (clean up) of call! (rack specification) method
 
