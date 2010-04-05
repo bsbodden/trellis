@@ -3,3 +3,4 @@ nbproject
 Thumbs.db
 **/.svn
 website
+coverage/*
